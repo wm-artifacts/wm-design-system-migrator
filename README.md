@@ -1,12 +1,12 @@
-# WaveMaker DEFAULT → PRISM Migration
+# WaveMaker DEFAULT → DesignSystem Migration
 
-> Claude Code skill that converts WaveMaker DEFAULT-template projects (from 11.x version WEB & NATIVE_MOBILE) to the PRISM design system — fully automated, producing a Studio-importable ZIP.
+> Claude Code skill that converts WaveMaker DEFAULT-template projects (from 11.x version WEB & NATIVE_MOBILE) to the DesignSystem design system — fully automated, producing a Studio-importable ZIP.
 
 ---
 
 ## What this skill does?
 
-A set of Claude slash commands that take a WaveMaker DEFAULT project (folder or `.zip`) and mechanically rewrite every file that must change to make it a valid PRISM project. No manual editing. Output is a ZIP ready to drag into WaveMaker Studio.
+A set of Claude slash commands that take a WaveMaker DEFAULT project (folder or `.zip`) and mechanically rewrite every file that must change to make it a valid DesignSystem project. No manual editing. Output is a ZIP ready to drag into WaveMaker Studio.
 
 ---
 
@@ -14,7 +14,7 @@ A set of Claude slash commands that take a WaveMaker DEFAULT project (folder or 
 
 - Claude Code CLI (the skill runs inside Claude)
 - Python 3.9+ on PATH (used internally by the skill for JSON/XML processing; no install step needed beyond what macOS ships with)
-- For MOBILE conversions: access to a reference PRISM mobile project to copy the `design-tokens/foundation/` skeleton from
+- For MOBILE conversions: access to a reference DesignSystem mobile project to copy the `design-tokens/foundation/` skeleton from
 
 ---
 
@@ -26,7 +26,7 @@ A set of Claude slash commands that take a WaveMaker DEFAULT project (folder or 
 | Runtime UI | `1.0.0-next.27577` | `1.0.0-next.27601` |
 | Studio upgrade | `1115.07` | `1115.08` |
 
-The skill prompts for these at runtime and lets you override them — paste values from a known-good PRISM reference project or accept the recommended defaults.
+The skill prompts for these at runtime and lets you override them — paste values from a known-good DesignSystem reference project or accept the recommended defaults.
 
 ---
 
@@ -34,7 +34,7 @@ The skill prompts for these at runtime and lets you override them — paste valu
 
 | Command | What it does |
 |---|---|
-| `/wm-studio-migrate` | **Core PRISM conversion** — pom.xml, properties, index.html, variables, page layouts, themes→design-tokens, NPM scope, migration history. Produces a ZIP. |
+| `/wm-studio-migrate` | **Core DesignSystem conversion** — pom.xml, properties, index.html, variables, page layouts, themes→design-tokens, NPM scope, migration history. Produces a ZIP. |
 | `/wm-autolayout-conv` | **Layout modernisation** — converts grid (`wm-layoutgrid / wm-gridrow / wm-gridcolumn`) and linear (`wm-linearlayout / wm-linearlayoutitem`) markup to `wm-container` flex layout. Dry-run mode available. |
 | `/wm-studio-migrate` | **Full pipeline** — runs both of the above in sequence, then ZIPs. Single command for the complete migration. |
 
@@ -45,17 +45,17 @@ The skill prompts for these at runtime and lets you override them — paste valu
 
 | File / area | What changes |
 |---|---|
-| `pom.xml` | `com.wavemaker.*` → `ai.wavemaker.*`; parent version + runtime UI version bumped to PRISM values |
+| `pom.xml` | `com.wavemaker.*` → `ai.wavemaker.*`; parent version + runtime UI version bumped to DesignSystem values |
 | `.wmproject.properties` | `template=DEFAULT` → `template=PRISM`; `studioProjectUpgradeVersion` updated; `supportedLanguages` JSON injected (XML-escaped) when `languageBundleSources=STATIC` |
-| `src/main/webapp/index.html` | Legacy `wm-style.css` / `wm-responsive.css` links removed; PRISM `foundation.css` + `design-tokens` block injected (WEB); mobile index left as-is |
+| `src/main/webapp/index.html` | Legacy `wm-style.css` / `wm-responsive.css` links removed; DesignSystem `foundation.css` + `design-tokens` block injected (WEB); mobile index left as-is |
 | `*.variables.json` (app + all pages) | `wm.NotificationVariable` → `wm.NotificationAction`; same for Navigation, Login, Logout — both `"category"` field and `"_id"` values |
 | Page HTML layouts (WEB) | `<wm-left-panel>` moved outside `<wm-content>`; `<wm-header>` / `<wm-footer>` moved inside; `<wm-top-nav>` removed; `navtype="rail" navheight="full"` added |
-| Page HTML layouts (MOBILE) | `wm-linearlayout` / `wm-linearlayoutitem` → `wm-container`; **`wm-layoutgrid` family kept as-is** (native PRISM mobile widget) |
+| Page HTML layouts (MOBILE) | `wm-linearlayout` / `wm-linearlayoutitem` → `wm-container`; **`wm-layoutgrid` family kept as-is** (native DesignSystem mobile widget) |
 | `themes/` directory | Deleted; replaced by `design-tokens/app.override.css` stub (WEB) or full foundation skeleton copied from reference project (MOBILE) |
 | `ui-build.js` | `NPM_PACKAGE_SCOPE = '@wavemaker'` → `'@wavemaker-ai'` (direct string, not caught by bulk regex) |
 | All source files (`.js .ts .tsx .jsx .json .html .css .md .yml .yaml`) | `@wavemaker/` → `@wavemaker-ai/` everywhere; email addresses (`@wavemaker.com`) preserved |
 | `wm_rn_config.json` (MOBILE only) | `"enableDesignTokens": true` + `"enableHermes": true` added to `preferences` |
-| `migration_info.json` | PRISM migration history entries (1115.03–1115.07 for WEB, +1115.08 for MOBILE) appended; existing history preserved |
+| `migration_info.json` | DesignSystem migration history entries (1115.03–1115.07 for WEB, +1115.08 for MOBILE) appended; existing history preserved |
 
 ### Layout modernisation (`/wm-autolayout-conv`)
 
@@ -82,7 +82,7 @@ The skill prompts for these at runtime and lets you override them — paste valu
 * `wm.*Variable` → `wm.*Action` renames — exact string match across all JSON files
 * `@wavemaker/` → `@wavemaker-ai/` bulk scope migration — trailing-slash pattern avoids false positives
 * `ui-build.js` `NPM_PACKAGE_SCOPE` — direct literal replacement, handled separately from bulk regex
-* `migration_info.json` — idempotent append of PRISM migration history
+* `migration_info.json` — idempotent append of DesignSystem migration history
 * MOBILE: `wm_rn_config.json` preferences update
 * MOBILE: `wm-layoutgrid` family is correctly left untouched (a previous known mistake has been fixed)
 * `supportedLanguages` injection — reads actual `i18n/*.json` files and XML-escapes them. Handles raw `<br/>` tags that previously caused Studio import failures.
@@ -97,10 +97,10 @@ The skill prompts for these at runtime and lets you override them — paste valu
 | Gap | Why |
 |---|---|
 | **Brand CSS / theme variables** | LESS-specific constructs (`darken()`, `lighten()`, `~"..."` wrappers) in the legacy theme cannot be mechanically translated to plain CSS variables. The skill creates a blank `:root {}` stub; brand customisation must be done manually via Studio's Theme panel or by hand-editing `design-tokens/app.override.css`. |
-| **MOBILE `design-tokens/` foundation skeleton** | The 40+ files in `design-tokens/foundation/` (Android + iOS style/token/variable files, assets) must be copied from a reference PRISM mobile project. The skill tells you to do this; it does not generate the files itself. |
-| **Prefab migration** | Prefab-internal files are not touched. Prefabs are platform-agnostic and run as-is under PRISM; if a prefab breaks at runtime it is a prefab-build issue, not a host-project conversion issue. |
+| **MOBILE `design-tokens/` foundation skeleton** | The 40+ files in `design-tokens/foundation/` (Android + iOS style/token/variable files, assets) must be copied from a reference DesignSystem mobile project. The skill tells you to do this; it does not generate the files itself. |
+| **Prefab migration** | Prefab-internal files are not touched. Prefabs are platform-agnostic and run as-is under DesignSystem; if a prefab breaks at runtime it is a prefab-build issue, not a host-project conversion issue. |
 | **Java backend / services** | `services/`, JPA mappings, security config, `build.xml`, `mvnw` — template-agnostic, not touched and not needed. |
-| **Highly custom page HTML** | Non-standard widget nesting, inline `<script>` blocks referencing layout elements, or pages that already have a partial PRISM structure may need a visual review after conversion. |
+| **Highly custom page HTML** | Non-standard widget nesting, inline `<script>` blocks referencing layout elements, or pages that already have a partial DesignSystem structure may need a visual review after conversion. |
 
 ---
 
@@ -108,11 +108,11 @@ The skill prompts for these at runtime and lets you override them — paste valu
 ## Invocation examples
 
 ```bash
-# Basic PRISM conversion (accepts folder or .zip)
+# Basic DesignSystem conversion (accepts folder or .zip)
 /wm-studio-migrate /path/to/MyApp
 
 # Convert + output to a different folder
-/wm-studio-migrate /path/to/MyApp.zip -o /path/to/MyApp_prism
+/wm-studio-migrate /path/to/MyApp.zip -o /path/to/MyApp_DesignSystem
 
 # Rename project during conversion
 /wm-studio-migrate /path/to/MyApp --project-name FinancePortal
@@ -120,7 +120,7 @@ The skill prompts for these at runtime and lets you override them — paste valu
 # Layout modernisation only (dry run to preview)
 /wm-autolayout-conv /path/to/MyApp --dry-run
 
-# Full pipeline: PRISM + layout modernisation + ZIP
+# Full pipeline: DesignSystem + layout modernisation + ZIP
 /wm-studio-migrate /path/to/MyApp
 
 # Full pipeline, skip layout conversion
@@ -135,18 +135,18 @@ The skill prompts for these at runtime and lets you override them — paste valu
 ## Upcoming Enhancements
 
 - Automatic generation of design-tokens/foundation/ skeleton files
-- Enhanced support for highly customised page layouts PRISM structures
+- Enhanced support for highly customised page layouts DesignSystem structures
 - Smarter responsive layout optimisation during auto-layout conversion
 
 ---
 
 ## Summary
 
-This Claude Code skill automates the migration of WaveMaker 11.x DEFAULT-template WEB and NATIVE_MOBILE projects to the PRISM design system. It performs mechanical rewrites across project configuration, layouts, variables, themes, design tokens, and package scopes, producing a Studio-importable ZIP with minimal manual effort.
+This Claude Code skill automates the migration of WaveMaker 11.x DEFAULT-template WEB and NATIVE_MOBILE projects to the DesignSystem design system. It performs mechanical rewrites across project configuration, layouts, variables, themes, design tokens, and package scopes, producing a Studio-importable ZIP with minimal manual effort.
 
 The migration includes:
 
-* PRISM-compatible dependency and project configuration updates
+* DesignSystem-compatible dependency and project configuration updates
 * Automatic variable and NPM scope migration
 * WEB and MOBILE layout transformations
 * Theme-to-design-token migration support
