@@ -250,18 +250,18 @@ output to build the per-page counts for the unified summary.
 
 ## PHASE 3 — ZIP Creation (always runs)
 
-Output ZIP is always named `<SOURCE_ZIP_BASENAME>_conv_designsystem.zip` and placed in the same
+Output ZIP is always named `<SOURCE_ZIP_BASENAME>_conv_ds.zip` and placed in the same
 directory as the source ZIP (or `TARGET_DIR`'s parent). Files are zipped from inside
 `TARGET_DIR` so they sit at the ZIP root (Studio-importable without a nested folder).
 
 ```bash
 cd "<TARGET_DIR>" \
-  && zip -rq "../<SOURCE_ZIP_BASENAME>_conv_designsystem.zip" . -x "*.DS_Store" \
+  && zip -rq "../<SOURCE_ZIP_BASENAME>_conv_ds.zip" . -x "*.DS_Store" \
   && cd .. \
   && rm -rf "<TARGET_DIR>"
 ```
 
-Capture `ZIP_SIZE` via `ls -lh "../<SOURCE_ZIP_BASENAME>_conv_designsystem.zip"`.
+Capture `ZIP_SIZE` via `ls -lh "../<SOURCE_ZIP_BASENAME>_conv_ds.zip"`.
 
 ---
 
