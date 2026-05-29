@@ -8,9 +8,9 @@ description: Use this skill to convert legacy WaveMaker grid layout widgets
   linearlayoutitem, and automatically collapses redundant single-child converted wrappers.
   Optionally injects mobile-responsive CSS breakpoints via --responsive. Supports dry-run
   mode and page filtering via --pages. Use this skill when the user wants to modernize
-  layout widgets in a WaveMaker project independently of a PRISM conversion — for example,
-  on an already-PRISM project or as a standalone cleanup step. Do not use this skill for
-  full PRISM template migration (use wm-prism-conv), or when the user wants the complete
+  layout widgets in a WaveMaker project independently of a DesignSystem conversion — for example,
+  on an already-DesignSystem project or as a standalone cleanup step. Do not use this skill for
+  full DesignSystem template migration (use wm-designsystem-conv), or when the user wants the complete
   migration pipeline in one shot (use wm-studio-migrate instead).
 metadata:
   version: 0.1.0

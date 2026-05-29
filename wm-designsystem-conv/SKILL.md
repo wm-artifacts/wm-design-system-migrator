@@ -1,15 +1,15 @@
 ---
-name: wm-prism-conv
+name: wm-designsystem-conv
 description: Use this skill to convert a WaveMaker DEFAULT-template project (WEB or
-  NATIVE_MOBILE) to PRISM design system format. It updates pom.xml groupIds and versions
-  from com.wavemaker.* to ai.wavemaker.*, marks the project as PRISM in
+  NATIVE_MOBILE) to DesignSystem design system format. It updates pom.xml groupIds and versions
+  from com.wavemaker.* to ai.wavemaker.*, marks the project as DesignSystem in
   .wmproject.properties, restructures page layouts (wm-left-panel moved outside wm-content,
   header/footer moved inside), renames legacy wm.*Variable action types to wm.*Action,
   replaces the themes directory with design-tokens, updates the NPM scope from @wavemaker
   to @wavemaker-ai, and produces a Studio-importable ZIP. Supports both WEB and
-  NATIVE_MOBILE platforms. Versions can be entered manually, copied from a reference PRISM
+  NATIVE_MOBILE platforms. Versions can be entered manually, copied from a reference DesignSystem
   project, or accepted as recommended defaults. Use this skill when the user wants to
-  upgrade an existing non-PRISM WaveMaker project to PRISM only. Do not use this skill to
+  upgrade an existing non-DesignSystem WaveMaker project to DesignSystem only. Do not use this skill to
   convert grid or linear layout widgets to flex containers (use wm-autolayout-conv for
   that), or when the user wants the full migration pipeline in one shot (use
   wm-studio-migrate instead).
@@ -17,9 +17,9 @@ metadata:
   version: 0.1.0
 ---
 
-# /convert-to-prism — WaveMaker Non-Prism → Prism Converter
+# /convert-to-designsystem — WaveMaker Non-DesignSystem → DesignSystem Converter
 
-Convert a WaveMaker DEFAULT-template project (WEB or NATIVE_MOBILE) to PRISM (design system) format.
+Convert a WaveMaker DEFAULT-template project (WEB or NATIVE_MOBILE) to DesignSystem (design system) format.
 
 Templates are located at: `default-to-designsystem-conv-templates/web/`, `default-to-designsystem-conv-templates/mobile/`, `default-to-designsystem-conv-templates/shared/`
 
@@ -28,14 +28,14 @@ Templates are located at: `default-to-designsystem-conv-templates/web/`, `defaul
 ## Invocation
 
 ```
-/convert-to-prism <project_path_or_zip>
-/convert-to-prism <project_path_or_zip> -o <output_path>
-/convert-to-prism <project_path_or_zip> --project-name <name>
+/convert-to-designsystem <project_path_or_zip>
+/convert-to-designsystem <project_path_or_zip> -o <output_path>
+/convert-to-designsystem <project_path_or_zip> --project-name <name>
 ```
 
 | Argument | Required | Description |
 |---|---|---|
-| `<project_path_or_zip>` | Yes | Absolute path to the non-prism WaveMaker project folder **or** a `.zip` export of that project |
+| `<project_path_or_zip>` | Yes | Absolute path to the non-designsystem WaveMaker project folder **or** a `.zip` export of that project |
 | `-o <output_path>` | No | Write converted project here; source stays untouched |
 | `--project-name <name>` | No | Rename project (updates artifactId, displayName, packagePrefix, title) |
 
@@ -50,13 +50,13 @@ Extract from `$ARGUMENTS`:
 - `TARGET_DIR` — value after `-o` (default determined below)
 - `PROJECT_NAME` — value after `--project-name` (optional)
 
-If `SOURCE_INPUT` is missing, ask: *"Please provide the path to the non-prism WaveMaker project folder or zip file."*
+If `SOURCE_INPUT` is missing, ask: *"Please provide the path to the non-designsystem WaveMaker project folder or zip file."*
 
 **Zip detection and extraction:**
 
 If `SOURCE_INPUT` ends with `.zip` (case-insensitive):
 1. Verify the file exists — if not, abort: *"Zip file not found: `<SOURCE_INPUT>`."*
-2. Set `SOURCE_ZIP_BASENAME` = zip filename without extension (e.g. `MyApp.zip` → `MyApp`). Used in STEP 13b to name the output zip `<SOURCE_ZIP_BASENAME>_conv_prism.zip`.
+2. Set `SOURCE_ZIP_BASENAME` = zip filename without extension (e.g. `MyApp.zip` → `MyApp`). Used in STEP 13b to name the output zip `<SOURCE_ZIP_BASENAME>_conv_designsystem.zip`.
 3. Determine `EXTRACT_DIR`:
    - `EXTRACT_DIR` = `<dirname(SOURCE_INPUT)>/<SOURCE_ZIP_BASENAME>/`
    - Example: `/tmp/MyApp.zip` → `EXTRACT_DIR = /tmp/MyApp/`
@@ -92,7 +92,7 @@ If `SOURCE_INPUT` is a directory path (does not end in `.zip`):
 Read `<SOURCE_DIR>/.wmproject.properties`.
 
 - File missing → abort: *"Not a WaveMaker project — .wmproject.properties not found."*
-- Contains `<entry key="template">PRISM</entry>` → abort: *"Already a PRISM project. Nothing to do."*
+- Contains `<entry key="template">PRISM</entry>` → abort: *"Already a DesignSystem project. Nothing to do."*
 - Must contain `<entry key="template">DEFAULT</entry>` → continue.
 
 Detect `PLATFORM`:
@@ -115,7 +115,7 @@ Extract from `.wmproject.properties`:
 
 **This step is mandatory — do not skip or use defaults silently.**
 
-Display the detected project type and current versions, then ask the user how they want to supply the target PRISM versions:
+Display the detected project type and current versions, then ask the user how they want to supply the target DesignSystem versions:
 
 ```
 Detected platform: [WEB or MOBILE]
@@ -124,9 +124,9 @@ Current project versions:
   Runtime UI version:     <CURRENT_RUNTIME_VERSION>
   Studio upgrade version: <CURRENT_UPGRADE_VERSION>
 
-How would you like to set the target PRISM versions?
+How would you like to set the target DesignSystem versions?
   1) Use recommended defaults
-  2) Copy versions from a reference PRISM project
+  2) Copy versions from a reference DesignSystem project
   3) Enter versions manually
 ```
 
@@ -147,9 +147,9 @@ Using recommended defaults:
 
 ---
 
-**Option 2 — Copy from a reference PRISM project**
+**Option 2 — Copy from a reference DesignSystem project**
 
-Ask: *"Please provide the path to the reference PRISM project folder (or its zip)."*
+Ask: *"Please provide the path to the reference DesignSystem project folder (or its zip)."*
 
 - If the path is a `.zip`, extract it to a temp dir first (same logic as STEP 0 zip handling), then locate the project root.
 - Read `pom.xml` from the reference project and extract:
@@ -168,7 +168,7 @@ Ask: *"Please provide the path to the reference PRISM project folder (or its zip
 Prompt:
 
 ```
-Please enter the target PRISM versions (press Enter to accept the recommended default):
+Please enter the target DesignSystem versions (press Enter to accept the recommended default):
   Parent POM version    [recommended: <RECOMMENDED_PARENT>]:  ___
   Runtime UI version    [recommended: <RECOMMENDED_RUNTIME>]: ___
   Studio upgrade ver    [recommended: <RECOMMENDED_UPGRADE>]: ___
@@ -186,7 +186,7 @@ Empty input for any field → use the recommended default for that field.
 | Runtime UI | `1.0.0-next.27577` | `1.0.0-next.27601` |
 | Studio upgrade | `1115.07` | `1115.08` |
 
-> Mobile PRISM uses the **same** version family as web (the `1.0.0-*` line). The older `12.0.0-*` numbers in earlier skill versions were wrong — they came from a pre-PRISM mobile track.
+> Mobile DesignSystem uses the **same** version family as web (the `1.0.0-*` line). The older `12.0.0-*` numbers in earlier skill versions were wrong — they came from a pre-DesignSystem mobile track.
 
 After whichever option is chosen, set:
 - `PARENT_VERSION`
@@ -221,7 +221,7 @@ After `</parent>`:
 <groupId>com.wavemaker.project</groupId>  →  <groupId>ai.wavemaker.project</groupId>
 ```
 
-> Earlier versions of this skill claimed mobile keeps `com.wavemaker.*` — that was wrong. PRISM mobile uses the `ai.wavemaker.*` groupIds, same as PRISM web. Verified against a reference PRISM mobile project (sample_mobile) created by Studio.
+> Earlier versions of this skill claimed mobile keeps `com.wavemaker.*` — that was wrong. DesignSystem mobile uses the `ai.wavemaker.*` groupIds, same as DesignSystem web. Verified against a reference DesignSystem mobile project (sample_mobile) created by Studio.
 
 **Both WEB and MOBILE** — in `<properties>`:
 ```
@@ -261,15 +261,15 @@ If `--project-name` was given:
 
 #### STEP 5b · Ensure `supportedLanguages` entry exists (CRITICAL for STATIC bundles)
 
-PRISM Studio's Angular codegen does `Object.values(t.supportedLanguages)` whenever
+DesignSystem Studio's Angular codegen does `Object.values(t.supportedLanguages)` whenever
 `languageBundleSources=STATIC`. If the entry is missing, codegen crashes with
 `TypeError: Cannot convert undefined or null to object` in
 `@wavemaker-ai/angular-codegen/src/update-angular-json.js`, and the generated
 runtime app never builds.
 
-Non-prism projects historically don't include `supportedLanguages` in
+Non-DesignSystem projects historically don't include `supportedLanguages` in
 `.wmproject.properties` (the data lives in `i18n/<lang>.json` files). Studio
-hadn't read it from a property in 11.x; PRISM now does.
+hadn't read it from a property in 11.x; DesignSystem now does.
 
 **Apply this only if** `<entry key="languageBundleSources">STATIC</entry>` is
 present AND no `<entry key="supportedLanguages">…</entry>` exists.
@@ -352,7 +352,7 @@ Read `<TARGET_DIR>/src/main/webapp/index.html`. If not found, skip this step.
 ```
 Also remove their `<link rel="preload" ... onload="...">` variants if present.
 
-**Change 3 — Replace old body CSS block** with prism block (see `default-to-designsystem-conv-templates/web/prism_index_css_block.html`):
+**Change 3 — Replace old body CSS block** with DesignSystem block (see `default-to-designsystem-conv-templates/web/designsystem_index_css_block.html`):
 
 Old body block (remove):
 ```html
@@ -413,7 +413,7 @@ wm.LoginVariable         →  wm.LoginAction
 wm.LogoutVariable        →  wm.LogoutAction
 ```
 
-If any of these legacy `*Variable` categories survive into PRISM, Studio import fails with
+If any of these legacy `*Variable` categories survive into DesignSystem, Studio import fails with
 `com.wavemaker.platform.exception.VariableException: Unknown variable type <Name>` and the
 project never initializes (Angular codegen then fails downstream with
 `TypeError: Cannot convert undefined or null to object` in `updateAngularJSON`).
@@ -445,7 +445,7 @@ Find all files: `<TARGET_DIR>/src/main/webapp/pages/*/*.html`
 
 #### STEP 8-WEB · Web page layout restructuring
 
-**Reference template:** `default-to-designsystem-conv-templates/web/prism_page_layout.html`
+**Reference template:** `default-to-designsystem-conv-templates/web/designsystem_page_layout.html`
 
 For each page HTML file:
 1. Skip if it does not contain `<wm-page`.
@@ -489,9 +489,9 @@ For each page HTML file:
 
 #### STEP 8-MOBILE · Mobile page layouts
 
-For PRISM mobile, `wm-layoutgrid` / `wm-gridrow` / `wm-gridcolumn` are
-**kept as-is** — they are valid PRISM mobile widgets. The reference
-PRISM mobile project (`sample_mobile/pages/Login/Login.html`) uses
+For DesignSystem mobile, `wm-layoutgrid` / `wm-gridrow` / `wm-gridcolumn` are
+**kept as-is** — they are valid DesignSystem mobile widgets. The reference
+DesignSystem mobile project (`sample_mobile/pages/Login/Login.html`) uses
 `<wm-layoutgrid>` natively under `<wm-page-content>`.
 
 The only mobile-specific structural fixup is for `wm-linearlayout` /
@@ -545,7 +545,7 @@ Attribute mapping:
 - Remove: `horizontalalign`, `verticalalign`, `spacing`
 
 > **Removed:** The previous `wm-layoutgrid → nested wm-container` conversion
-> has been deleted. PRISM mobile uses `wm-layoutgrid`/`wm-gridrow`/`wm-gridcolumn`
+> has been deleted. DesignSystem mobile uses `wm-layoutgrid`/`wm-gridrow`/`wm-gridcolumn`
 > natively (verified against `sample_mobile`); rewriting them to `wm-container`
 > with `autoLayout="true"` breaks bindings and visual layout. Leave layoutgrid
 > trees untouched.
@@ -564,9 +564,9 @@ Save each file that was modified. Track pages needing review (had multi-child li
 **Do NOT modify any prefab content.**
 
 WaveMaker prefabs are platform-agnostic artifacts: a single prefab build runs
-against both DEFAULT and PRISM consumer projects. Prefab-internal variables,
+against both DEFAULT and DesignSystem consumer projects. Prefab-internal variables,
 templates and CSS are handled by the prefab runtime — not the host project's
-loaders — so a non-PRISM-looking cache under
+loaders — so a non-DesignSystem-looking cache under
 `src/main/webapp/WEB-INF/prefabs/<prefabname>/` is normal and not a defect.
 **No prefab-related conversion is required.**
 
@@ -582,13 +582,13 @@ loaders — so a non-PRISM-looking cache under
 **Add to the STEP 14 summary** (only when prefabs are detected):
 
 ```
-Prefabs detected (passthrough — no conversion required, runs as-is in PRISM):
+Prefabs detected (passthrough — no conversion required, runs as-is in DesignSystem):
   • <prefab1>   used in: <page>, <page>
   • <prefab2>   used in: <page>
 ```
 
 Do not flag a prefab as needing migration based on the cache contents.
-A prefab failing at runtime in PRISM is a prefab-build bug — file it against
+A prefab failing at runtime in DesignSystem is a prefab-build bug — file it against
 the prefab project; it is not something this conversion can or should fix.
 
 Save nothing; this step is read-only.
@@ -598,7 +598,7 @@ Save nothing; this step is read-only.
 ### STEP 9 · Replace `themes/` with `design-tokens/`
 
 **WEB projects** — Studio generates `design-tokens/app.override.css` on first
-open in prism mode. Just remove the legacy themes/:
+open in DesignSystem mode. Just remove the legacy themes/:
 ```bash
 rm -rf "<TARGET_DIR>/src/main/webapp/themes"
 ```
@@ -609,7 +609,7 @@ Studio a head start, or to carry over custom CSS variables from `themes/<active>
 `design-tokens/` directory **before** import; mobile Studio expects it
 on disk (it does not auto-generate the foundation skeleton from a blank slate).
 
-The reference layout (from a fresh PRISM mobile project):
+The reference layout (from a fresh DesignSystem mobile project):
 ```
 src/main/webapp/design-tokens/
 ├── app.studio.override.css         # stub:  :root {}
@@ -628,7 +628,7 @@ src/main/webapp/design-tokens/
 
 Steps:
 1. `rm -rf "<TARGET_DIR>/src/main/webapp/themes"`
-2. Copy the `design-tokens/` skeleton from a known-good reference PRISM mobile
+2. Copy the `design-tokens/` skeleton from a known-good reference DesignSystem mobile
    project (e.g. `sample_mobile/src/main/webapp/design-tokens/`) into
    `<TARGET_DIR>/src/main/webapp/design-tokens/`.
 3. Leave `theme.variables.js` at webapp root untouched (it stays
@@ -643,7 +643,7 @@ error that would otherwise surface as
 
 ### STEP 10 · Update NPM scope `@wavemaker` → `@wavemaker-ai` — BOTH WEB and MOBILE
 
-The PRISM runtime ships under `@wavemaker-ai`. Three places need updating:
+The DesignSystem runtime ships under `@wavemaker-ai`. Three places need updating:
 
 **10a — `<TARGET_DIR>/ui-build.js`** (if present) — apply this as a direct
 string replacement BEFORE running the bulk regex in 10b:
@@ -734,7 +734,7 @@ Add (or update) inside `"preferences"`:
 
 Both keys are present in `sample_mobile/src/main/webapp/wm_rn_config.json`.
 `enableHermes` opts the React Native bundle into the Hermes JS engine, which
-PRISM mobile expects. Preserve all other fields exactly. Save the file.
+DesignSystem mobile expects. Preserve all other fields exactly. Save the file.
 
 ---
 
@@ -768,7 +768,7 @@ Let:
 - `PARENT_DIR` = directory containing `TARGET_DIR`
 - `FOLDER_BASENAME` = basename of `TARGET_DIR`
 - `ZIP_NAME` — determined by input type:
-  - Input was a zip → `ZIP_NAME = <SOURCE_ZIP_BASENAME>_conv_prism`  (e.g. `MyApp_conv_prism`)
+  - Input was a zip → `ZIP_NAME = <SOURCE_ZIP_BASENAME>_conv_designsystem`  (e.g. `MyApp_conv_designsystem`)
   - Input was a folder → `ZIP_NAME = <FOLDER_BASENAME>`
 - `ZIP_PATH` = `<PARENT_DIR>/<ZIP_NAME>.zip`
 
@@ -838,7 +838,7 @@ Known harmless Studio log lines (WEB):
 
 Next steps:
   1. Open the project in WaveMaker Studio
-  2. Studio auto-applies remaining prism migrations on first open
+  2. Studio auto-applies remaining DesignSystem migrations on first open
   3. [MOBILE] Studio generates design-tokens/ on first open
   4. Customise branding via Theme panel (colors, fonts, radii via design-tokens)
   5. Build and test the application
@@ -892,7 +892,7 @@ List any pages needing review (mobile multi-child linearlayoutitem), files skipp
 | `*.variables.json` | `wm.LoginVariable` | `wm.LoginAction` |
 | `*.variables.json` | `wm.LogoutVariable` | `wm.LogoutAction` |
 | Page `*.html` `wm-linearlayout` | legacy | `wm-container` with `autoLayout="true"` |
-| Page `*.html` `wm-layoutgrid` family | (keep as-is) | **unchanged** — native PRISM mobile widget |
+| Page `*.html` `wm-layoutgrid` family | (keep as-is) | **unchanged** — native DesignSystem mobile widget |
 | `themes/` directory | present | replaced by `design-tokens/` skeleton (foundation/, app.studio.override.css, dependencies.json, themes-config.json) |
 | `ui-build.js` `NPM_PACKAGE_SCOPE` constant | `'@wavemaker'` (no slash — not caught by 10b regex) | `'@wavemaker-ai'` — direct edit in STEP 10a |
 | `ui-build.js` scope (imports) | `@wavemaker/` | `@wavemaker-ai/` (STEP 10b bulk regex) |
@@ -908,11 +908,11 @@ List any pages needing review (mobile multi-child linearlayoutitem), files skipp
 | Template file | Platform | Used in step |
 |---|---|---|
 | `default-to-designsystem-conv-templates/web/pom_changes.xml` | WEB | Step 4 |
-| `default-to-designsystem-conv-templates/web/prism_index_css_block.html` | WEB | Step 6 |
-| `default-to-designsystem-conv-templates/web/prism_page_layout.html` | WEB | Step 8 |
+| `default-to-designsystem-conv-templates/web/designsystem_index_css_block.html` | WEB | Step 6 |
+| `default-to-designsystem-conv-templates/web/designsystem_page_layout.html` | WEB | Step 8 |
 | `default-to-designsystem-conv-templates/mobile/pom_changes.xml` | MOBILE | Step 4 |
 | `default-to-designsystem-conv-templates/mobile/wm_rn_config_changes.txt` | MOBILE | Step 11 |
-| `default-to-designsystem-conv-templates/mobile/prism_mobile_layout.txt` | MOBILE | Step 8 |
+| `default-to-designsystem-conv-templates/mobile/designsystem_mobile_layout.txt` | MOBILE | Step 8 |
 | `default-to-designsystem-conv-templates/shared/wmproject_properties_changes.txt` | Both | Step 5 |
 | `default-to-designsystem-conv-templates/shared/variables_json_changes.txt` | Both | Step 7 |
 | `default-to-designsystem-conv-templates/shared/migration_info.json` | Both | Step 12 |

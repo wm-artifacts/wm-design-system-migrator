@@ -1,16 +1,16 @@
 ---
 name: wm-studio-migrate
 description: Use this skill to run the complete WaveMaker project migration pipeline in
-  one shot. It orchestrates wm-prism-conv (DEFAULT → PRISM format conversion) followed by
+  one shot. It orchestrates wm-designsystem-conv (DEFAULT → DesignSystem format conversion) followed by
   wm-autolayout-conv (wm-layoutgrid / wm-gridrow / wm-gridcolumn + wm-linearlayout /
   wm-linearlayoutitem → wm-container), then produces a Studio-importable ZIP. Shows a
   unified plan before writing any files and prints a combined summary of both phases on
-  completion. Either phase can be skipped individually via --skip-prism or
+  completion. Either phase can be skipped individually via --skip-designsystem or
   --skip-autolayout. Supports project renaming, output path override, page filtering, and
   responsive CSS injection. Use this skill when the user wants to fully migrate a
-  WaveMaker project from DEFAULT template to PRISM with modern flex layouts in a single
-  command. Do not use this skill if the user only wants PRISM conversion without touching
-  layouts (use wm-prism-conv), or only wants to convert layout widgets on an already-PRISM
+  WaveMaker project from DEFAULT template to DesignSystem with modern flex layouts in a single
+  command. Do not use this skill if the user only wants DesignSystem conversion without touching
+  layouts (use wm-designsystem-conv), or only wants to convert layout widgets on an already-DesignSystem
   project (use wm-autolayout-conv).
 metadata:
   version: 0.1.0
@@ -18,12 +18,12 @@ metadata:
 
 # /wm-studio-migrate — WaveMaker Full Migration Orchestrator
 
-Full pipeline to convert a WaveMaker DEFAULT-template project to PRISM and
+Full pipeline to convert a WaveMaker DEFAULT-template project to DesignSystem and
 (optionally) convert grid layouts to flex containers, then produce a Studio-
 importable ZIP.
 
 Sub-skills this orchestrates:
-- **wm-prism-conv** — PRISM conversion (pom.xml, .wmproject.properties,
+- **wm-designsystem-conv** — DesignSystem conversion (pom.xml, .wmproject.properties,
   index.html, variables, page layouts, themes → design-tokens, npm scope,
   migration_info)
 - **wm-autolayout-conv** — Grid & LinearLayout → flex container conversion
@@ -41,7 +41,7 @@ full pipeline in one shot.
 /wm-studio-migrate <project_path> -o <output_path>
 /wm-studio-migrate <project_path> --project-name <name>
 /wm-studio-migrate <project_path> --skip-autolayout
-/wm-studio-migrate <project_path> --skip-prism
+/wm-studio-migrate <project_path> --skip-designsystem
 /wm-studio-migrate <project_path> --responsive
 /wm-studio-migrate <project_path> --pages <Page1,Page2>
 ```
@@ -51,8 +51,8 @@ full pipeline in one shot.
 | `<project_path>` | Yes | Absolute path to the WaveMaker project |
 | `-o <output_path>` | No | Write converted project here; source stays untouched |
 | `--project-name <name>` | No | Rename project (updates artifactId, displayName, etc.) |
-| `--skip-prism` | No | Skip PRISM conversion; only run autolayout + ZIP |
-| `--skip-autolayout` | No | Skip autolayout conversion; only run PRISM + ZIP |
+| `--skip-designsystem` | No | Skip DesignSystem conversion; only run autolayout + ZIP |
+| `--skip-autolayout` | No | Skip autolayout conversion; only run DesignSystem + ZIP |
 | `--responsive` | No | Inject mobile media-query CSS when converting autolayout |
 | `--pages <names>` | No | Comma-separated pages to target for autolayout (default: all) |
 
@@ -60,8 +60,8 @@ full pipeline in one shot.
 
 | User says | Resolves to |
 |---|---|
-| "don't convert layout" / "skip autolayout" / "prism only" | `--skip-autolayout` |
-| "don't convert to prism" / "layout only" / "skip prism" | `--skip-prism` |
+| "don't convert layout" / "skip autolayout" / "designsystem only" | `--skip-autolayout` |
+| "don't convert to designsystem" / "layout only" / "skip designsystem" | `--skip-designsystem` |
 | "with responsive CSS" / "add mobile breakpoints" | `--responsive` |
 | "only convert Home and Login" | `--pages Home,Login` |
 
@@ -82,7 +82,7 @@ Extract from the invocation string (positional args + flags + natural language):
   - **Otherwise** (directory path given): `SOURCE_ZIP_BASENAME` = basename of `SOURCE_DIR`
 - `TARGET_DIR` — value after `-o` (default = `SOURCE_DIR`)
 - `PROJECT_NAME` — value after `--project-name` (optional)
-- `RUN_PRISM` — `true` unless `--skip-prism` or equivalent intent detected
+- `RUN_DESIGNSYSTEM` — `true` unless `--skip-designsystem` or equivalent intent detected
 - `RUN_AUTOLAYOUT` — `true` unless `--skip-autolayout` or equivalent intent detected
 - `ADD_RESPONSIVE` — `true` if `--responsive` or equivalent
 - `PAGE_FILTER` — list after `--pages` (empty = all)
@@ -92,7 +92,7 @@ Show the detected plan before doing anything:
 ```
 Migration plan for: <SOURCE_DIR>
 
-  Phase 1 — PRISM conversion:    [ENABLED | SKIPPED (--skip-prism)]
+  Phase 1 — DesignSystem conversion:    [ENABLED | SKIPPED (--skip-designsystem)]
   Phase 2 — AutoLayout conversion: [ENABLED | SKIPPED (--skip-autolayout)]
   Phase 3 — ZIP creation:         ALWAYS
 
@@ -108,9 +108,9 @@ Wait for confirmation. If the user says no, stop.
 Read `<SOURCE_DIR>/.wmproject.properties`.
 
 - File missing → abort: *"Not a WaveMaker project — .wmproject.properties not found."*
-- `RUN_PRISM = true` AND contains `<entry key="template">PRISM</entry>` → warn:
-  *"Project is already PRISM. Skipping Phase 1 and proceeding to Phase 2."*
-  Set `RUN_PRISM = false` and continue.
+- `RUN_DESIGNSYSTEM = true` AND contains `<entry key="template">PRISM</entry>` → warn:
+  *"Project is already DesignSystem. Skipping Phase 1 and proceeding to Phase 2."*
+  Set `RUN_DESIGNSYSTEM = false` and continue.
 
 Detect `PLATFORM`:
 - `<entry key="platformType">WEB</entry>` → `PLATFORM = WEB`
@@ -124,7 +124,7 @@ Also read `pom.xml` and extract:
 
 ---
 
-### STEP 2 · Confirm PRISM target versions (only when RUN_PRISM = true)
+### STEP 2 · Confirm DesignSystem target versions (only when RUN_DESIGNSYSTEM = true)
 
 **This sub-step is mandatory whenever Phase 1 runs — do not skip or use defaults silently.**
 
@@ -137,7 +137,7 @@ Current versions:
   Runtime UI:     <CURRENT_RUNTIME_VERSION>
   Studio upgrade: <CURRENT_UPGRADE_VERSION>
 
-Target PRISM versions — press Enter to accept recommended:
+Target DesignSystem versions — press Enter to accept recommended:
   Parent POM     [recommended: <REC_PARENT>]:  ___
   Runtime UI     [recommended: <REC_RUNTIME>]: ___
   Studio upgrade [recommended: <REC_UPGRADE>]: ___
@@ -184,9 +184,9 @@ All remaining steps operate on `TARGET_DIR`.
 
 ---
 
-## PHASE 1 — PRISM Conversion (skip entirely if RUN_PRISM = false)
+## PHASE 1 — DesignSystem Conversion (skip entirely if RUN_DESIGNSYSTEM = false)
 
-Use the **Read** tool to load `.claude/commands/wm-prism-conv.md` (sibling file,
+Use the **Read** tool to load `.claude/commands/wm-designsystem-conv.md` (sibling file,
 same directory as this file). **Do NOT use the Skill tool** — there is no registered
 skill for this; the implementation lives entirely in that `.md` file.
 
@@ -202,7 +202,7 @@ variables already resolved in STEP 0–2 above:
 | `PROJECT_NAME` | `--project-name` flag (pass `NONE` if not supplied) |
 | `PLATFORM` | Detected in STEP 1 (`WEB` or `MOBILE`) |
 
-**Skip** these wm-prism-conv steps — already handled by this orchestrator:
+**Skip** these wm-designsystem-conv steps — already handled by this orchestrator:
 
 | Skip | Reason |
 |---|---|
@@ -252,18 +252,18 @@ output to build the per-page counts for the unified summary.
 
 ## PHASE 3 — ZIP Creation (always runs)
 
-Output ZIP is always named `<SOURCE_ZIP_BASENAME>_conv_prism.zip` and placed in the same
+Output ZIP is always named `<SOURCE_ZIP_BASENAME>_conv_designsystem.zip` and placed in the same
 directory as the source ZIP (or `TARGET_DIR`'s parent). Files are zipped from inside
 `TARGET_DIR` so they sit at the ZIP root (Studio-importable without a nested folder).
 
 ```bash
 cd "<TARGET_DIR>" \
-  && zip -rq "../<SOURCE_ZIP_BASENAME>_conv_prism.zip" . -x "*.DS_Store" \
+  && zip -rq "../<SOURCE_ZIP_BASENAME>_conv_designsystem.zip" . -x "*.DS_Store" \
   && cd .. \
   && rm -rf "<TARGET_DIR>"
 ```
 
-Capture `ZIP_SIZE` via `ls -lh "../<SOURCE_ZIP_BASENAME>_conv_prism.zip"`.
+Capture `ZIP_SIZE` via `ls -lh "../<SOURCE_ZIP_BASENAME>_conv_designsystem.zip"`.
 
 ---
 
@@ -277,7 +277,7 @@ Platform:  <WEB or MOBILE>
 ZIP:       <ZIP_PATH>  (<ZIP_SIZE>)
 
 ════════════════════════════════════════════════════════
-PHASE 1 — PRISM Conversion        [COMPLETE | SKIPPED]
+PHASE 1 — DesignSystem Conversion        [COMPLETE | SKIPPED]
 ════════════════════════════════════════════════════════
 Versions applied:
   Parent POM:       <PARENT_VERSION>
@@ -315,7 +315,7 @@ PHASE 2 — AutoLayout Conversion   [COMPLETE | SKIPPED | DRY RUN]
 Next steps
 ════════════════════════════════════════════════════════
   1. Import <ZIP_PATH> into WaveMaker Studio
-  2. Studio auto-applies remaining PRISM migrations on first open
+  2. Studio auto-applies remaining DesignSystem migrations on first open
   3. Preview each page; adjust container gap/padding/alignment as needed
   4. Customise branding via Theme panel (design-tokens)
   5. Build and test the application
@@ -331,7 +331,7 @@ Known harmless Studio log lines:
 
 ## Quick reference — what each phase does
 
-### Phase 1 (wm-prism-conv)
+### Phase 1 (wm-designsystem-conv)
 
 | File | Change |
 |---|---|
@@ -343,7 +343,7 @@ Known harmless Studio log lines:
 | `themes/` | Removed; `design-tokens/app.override.css` stub created |
 | `ui-build.js` | `NPM_PACKAGE_SCOPE = '@wavemaker-ai'`; bulk `@wavemaker/` → `@wavemaker-ai/` |
 | `wm_rn_config.json` | MOBILE only: `enableDesignTokens=true`, `enableHermes=true` |
-| `migration_info.json` | PRISM entries 1115.03–1115.07 appended; full history preserved |
+| `migration_info.json` | DesignSystem entries 1115.03–1115.07 appended; full history preserved |
 
 ### Phase 2 (wm-autolayout-conv)
 
