@@ -21,7 +21,7 @@ metadata:
 
 Convert a WaveMaker DEFAULT-template project (WEB or NATIVE_MOBILE) to DesignSystem (design system) format.
 
-Templates are located at: `default-to-designsystem-conv-templates/web/`, `default-to-designsystem-conv-templates/mobile/`, `default-to-designsystem-conv-templates/shared/`
+Templates are located at: `assets/web/`, `assets/mobile/`, `assets/shared/`
 
 ---
 
@@ -207,7 +207,7 @@ All remaining steps operate on `TARGET_DIR`.
 
 ### STEP 4 · Update `pom.xml`
 
-**Reference templates:** `default-to-designsystem-conv-templates/web/pom_changes.xml` (WEB) or `default-to-designsystem-conv-templates/mobile/pom_changes.xml` (MOBILE)
+**Reference templates:** `assets/web/pom_changes.xml` (WEB) or `assets/mobile/pom_changes.xml` (MOBILE)
 
 Read `<TARGET_DIR>/pom.xml` and apply:
 
@@ -241,7 +241,7 @@ Save the file.
 
 ### STEP 5 · Update `.wmproject.properties`
 
-**Reference template:** `default-to-designsystem-conv-templates/shared/wmproject_properties_changes.txt`
+**Reference template:** `assets/shared/wmproject_properties_changes.txt`
 
 Read `<TARGET_DIR>/.wmproject.properties` and apply (both WEB and MOBILE):
 ```
@@ -352,7 +352,7 @@ Read `<TARGET_DIR>/src/main/webapp/index.html`. If not found, skip this step.
 ```
 Also remove their `<link rel="preload" ... onload="...">` variants if present.
 
-**Change 3 — Replace old body CSS block** with DesignSystem block (see `default-to-designsystem-conv-templates/web/designsystem_index_css_block.html`):
+**Change 3 — Replace old body CSS block** with DesignSystem block (see `assets/web/designsystem_index_css_block.html`):
 
 Old body block (remove):
 ```html
@@ -399,7 +399,7 @@ Save the file if any changes were made.
 
 ### STEP 7 · Update `app.variables.json` and all page `*.variables.json`
 
-**Reference template:** `default-to-designsystem-conv-templates/shared/variables_json_changes.txt`
+**Reference template:** `assets/shared/variables_json_changes.txt`
 
 Find all target files:
 - `<TARGET_DIR>/src/main/webapp/app.variables.json`
@@ -445,7 +445,7 @@ Find all files: `<TARGET_DIR>/src/main/webapp/pages/*/*.html`
 
 #### STEP 8-WEB · Web page layout restructuring
 
-**Reference template:** `default-to-designsystem-conv-templates/web/designsystem_page_layout.html`
+**Reference template:** `assets/web/designsystem_page_layout.html`
 
 For each page HTML file:
 1. Skip if it does not contain `<wm-page`.
@@ -720,7 +720,7 @@ updated in 10a — apply the direct edit now before continuing.
 
 **Skip this step for WEB projects.**
 
-**Reference template:** `default-to-designsystem-conv-templates/mobile/wm_rn_config_changes.txt`
+**Reference template:** `assets/mobile/wm_rn_config_changes.txt`
 
 Read `<TARGET_DIR>/src/main/webapp/wm_rn_config.json`. If not found, skip with warning.
 
@@ -740,7 +740,7 @@ DesignSystem mobile expects. Preserve all other fields exactly. Save the file.
 
 ### STEP 12 · Create `migration_info.json`
 
-Read the template: `default-to-designsystem-conv-templates/shared/migration_info.json`
+Read the template: `assets/shared/migration_info.json`
 
 If `<TARGET_DIR>/migration_info.json` already exists and already contains migration entry `1115.07`, keep the existing file (it has the full project history).
 
@@ -750,7 +750,7 @@ Otherwise, write the template content to `<TARGET_DIR>/migration_info.json`.
 
 ### STEP 13 · Create `migration_info.md`
 
-Read the template: `default-to-designsystem-conv-templates/shared/migration_info.md`
+Read the template: `assets/shared/migration_info.md`
 
 If `<TARGET_DIR>/migration_info.md` already exists, keep it.
 
@@ -907,13 +907,13 @@ List any pages needing review (mobile multi-child linearlayoutitem), files skipp
 
 | Template file | Platform | Used in step |
 |---|---|---|
-| `default-to-designsystem-conv-templates/web/pom_changes.xml` | WEB | Step 4 |
-| `default-to-designsystem-conv-templates/web/designsystem_index_css_block.html` | WEB | Step 6 |
-| `default-to-designsystem-conv-templates/web/designsystem_page_layout.html` | WEB | Step 8 |
-| `default-to-designsystem-conv-templates/mobile/pom_changes.xml` | MOBILE | Step 4 |
-| `default-to-designsystem-conv-templates/mobile/wm_rn_config_changes.txt` | MOBILE | Step 11 |
-| `default-to-designsystem-conv-templates/mobile/designsystem_mobile_layout.txt` | MOBILE | Step 8 |
-| `default-to-designsystem-conv-templates/shared/wmproject_properties_changes.txt` | Both | Step 5 |
-| `default-to-designsystem-conv-templates/shared/variables_json_changes.txt` | Both | Step 7 |
-| `default-to-designsystem-conv-templates/shared/migration_info.json` | Both | Step 12 |
-| `default-to-designsystem-conv-templates/shared/migration_info.md` | Both | Step 13 |
+| `assets/web/pom_changes.xml` | WEB | Step 4 |
+| `assets/web/designsystem_index_css_block.html` | WEB | Step 6 |
+| `assets/web/designsystem_page_layout.html` | WEB | Step 8 |
+| `assets/mobile/pom_changes.xml` | MOBILE | Step 4 |
+| `assets/mobile/wm_rn_config_changes.txt` | MOBILE | Step 11 |
+| `assets/mobile/designsystem_mobile_layout.txt` | MOBILE | Step 8 |
+| `assets/shared/wmproject_properties_changes.txt` | Both | Step 5 |
+| `assets/shared/variables_json_changes.txt` | Both | Step 7 |
+| `assets/shared/migration_info.json` | Both | Step 12 |
+| `assets/shared/migration_info.md` | Both | Step 13 |
