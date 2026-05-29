@@ -1,0 +1,31 @@
+<!--
+  POM.XML CHANGES REFERENCE
+  ==========================
+  Shows exactly what changes in pom.xml during non-prism → prism conversion.
+-->
+
+<!-- ❌ NON-PRISM (before) -->
+<parent>
+  <groupId>com.wavemaker.app</groupId>
+  <artifactId>wavemaker-app-parent</artifactId>
+  <version>11.15.2</version>
+</parent>
+<groupId>com.wavemaker.project</groupId>
+<artifactId>PROJECT_NAME</artifactId>
+<properties>
+  <wavemaker.app.runtime.ui.version>11.15.2-rc.249</wavemaker.app.runtime.ui.version>
+  <wavemaker.artifactType>wmapp</wavemaker.artifactType>
+</properties>
+
+<!-- ✅ PRISM (after) -->
+<parent>
+  <groupId>ai.wavemaker.app</groupId>
+  <artifactId>wavemaker-app-parent</artifactId>
+  <version>1.0.0-20260511131654</version>
+</parent>
+<groupId>ai.wavemaker.project</groupId>
+<artifactId>PROJECT_NAME</artifactId>
+<properties>
+  <wavemaker.app.runtime.ui.version>1.0.0-next.27577</wavemaker.app.runtime.ui.version>
+  <wavemaker.artifactType>wmapp</wavemaker.artifactType>
+</properties>

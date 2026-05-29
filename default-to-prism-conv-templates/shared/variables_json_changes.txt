@@ -1,0 +1,70 @@
+VARIABLES.JSON CHANGES REFERENCE
+=================================
+Shows exactly what string replacements are applied to app.variables.json
+and all pages/**/*.variables.json files.
+
+CATEGORY RENAMES (WaveMaker 11.15 API rename):
+  wm.NotificationVariable  →  wm.NotificationAction
+  wm.NavigationVariable    →  wm.NavigationAction
+  wm.LoginVariable         →  wm.LoginAction
+  wm.LogoutVariable        →  wm.LogoutAction
+
+These affect both:
+  - "category" field value
+  - "_id" field value (which embeds the category name)
+
+⚠️ If any legacy *Variable category survives into PRISM, Studio import fails with:
+   com.wavemaker.platform.exception.VariableException: Unknown variable type <Name>
+   (through reference chain: java.util.HashMap["<variableName>"])
+The project then never initializes, and Angular codegen fails downstream with:
+   TypeError: Cannot convert undefined or null to object  in updateAngularJSON
+
+EXAMPLE (app.variables.json):
+
+❌ NON-PRISM (before):
+{
+  "appNotification": {
+    "_id": "wm-appErrorHandler-wm.NotificationVariable-1454664620943",
+    "category": "wm.NotificationVariable",
+    ...
+  },
+  "goToPage_Main": {
+    "_id": "wm-wm.NavigationVariable1389180517517",
+    "category": "wm.NavigationVariable",
+    ...
+  },
+  "loginAction": {
+    "_id": "wm-loginAction-wm.LoginVariable-1728377864711",
+    "category": "wm.LoginVariable",
+    ...
+  },
+  "logoutAction": {
+    "_id": "wm-logoutAction-wm.LogoutVariable-1728377864712",
+    "category": "wm.LogoutVariable",
+    ...
+  }
+}
+
+✅ PRISM (after):
+{
+  "appNotification": {
+    "_id": "wm-appErrorHandler-wm.NotificationAction-1454664620943",
+    "category": "wm.NotificationAction",
+    ...
+  },
+  "goToPage_Main": {
+    "_id": "wm-wm.NavigationAction1389180517517",
+    "category": "wm.NavigationAction",
+    ...
+  },
+  "loginAction": {
+    "_id": "wm-loginAction-wm.LoginAction-1728377864711",
+    "category": "wm.LoginAction",
+    ...
+  },
+  "logoutAction": {
+    "_id": "wm-logoutAction-wm.LogoutAction-1728377864712",
+    "category": "wm.LogoutAction",
+    ...
+  }
+}

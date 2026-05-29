@@ -1,0 +1,35 @@
+WM_RN_CONFIG.JSON CHANGES REFERENCE — MOBILE PRISM
+====================================================
+Required changes: add "enableDesignTokens": true AND "enableHermes": true inside the "preferences" block.
+Both fields are required for PRISM mobile. Verified from sample_mobile (fresh PRISM project from Studio).
+Preserve all other fields (plugins, customPlugins, serverPath, splash, etc.) exactly.
+
+❌ NON-PRISM (before):
+{
+  "name" : "MyApp",
+  ...
+  "preferences" : {
+    "enableRipple" : false,
+    "enableLogs" : true
+  },
+  ...
+}
+
+✅ PRISM (after):
+{
+  "name" : "MyApp",
+  ...
+  "preferences" : {
+    "enableRipple" : false,
+    "enableLogs" : true,
+    "enableDesignTokens" : true,
+    "enableHermes" : true
+  },
+  ...
+}
+
+RULES:
+- Add "enableDesignTokens": true — REQUIRED
+- Add "enableHermes": true — REQUIRED
+- Do NOT remove or rename any existing preference keys
+- Preserve all other top-level fields exactly as they are

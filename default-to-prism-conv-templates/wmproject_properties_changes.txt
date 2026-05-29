@@ -1,0 +1,16 @@
+WMPROJECT.PROPERTIES CHANGES REFERENCE
+=======================================
+Shows exactly what changes in .wmproject.properties during non-prism → prism conversion.
+
+❌ NON-PRISM (before):
+  <entry key="template">DEFAULT</entry>
+  <entry key="studioProjectUpgradeVersion">1114.09</entry>
+
+✅ PRISM (after):
+  <entry key="template">PRISM</entry>
+  <entry key="studioProjectUpgradeVersion">1115.07</entry>
+
+OPTIONAL (if --project-name is provided):
+  <entry key="displayName">OLD_NAME</entry>  →  <entry key="displayName">NEW_NAME</entry>
+  <entry key="name">OLD_NAME</entry>          →  <entry key="name">NEW_NAME</entry>
+  <entry key="packagePrefix">com.OLD_NAME</entry>  →  <entry key="packagePrefix">com.NEW_NAME</entry>

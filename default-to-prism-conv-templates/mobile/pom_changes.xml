@@ -1,0 +1,34 @@
+<!--
+  POM.XML CHANGES REFERENCE — MOBILE (NATIVE_MOBILE)
+  ====================================================
+  Shows exactly what changes in pom.xml during non-prism → prism conversion for MOBILE apps.
+
+  Mobile apps change groupId the same way as web apps (ai.wavemaker.*).
+  Verified against sample_mobile — a fresh PRISM project created in WaveMaker Studio.
+-->
+
+<!-- ❌ NON-PRISM (before) -->
+<parent>
+  <groupId>com.wavemaker.app</groupId>       ← CHANGE to ai.wavemaker.app
+  <artifactId>wavemaker-app-parent</artifactId>
+  <version>11.14.0</version>                  ← CHANGE to PARENT_VERSION
+</parent>
+<groupId>com.wavemaker.project</groupId>     ← CHANGE to ai.wavemaker.project
+<artifactId>PROJECT_NAME</artifactId>
+<properties>
+  <wavemaker.app.runtime.ui.version>11.14.0-rc.226</wavemaker.app.runtime.ui.version>  ← CHANGE to RUNTIME_UI_VERSION
+  <wavemaker.artifactType>wmmobile</wavemaker.artifactType>  ← stays the same
+</properties>
+
+<!-- ✅ PRISM (after) -->
+<parent>
+  <groupId>ai.wavemaker.app</groupId>        ← changed (same as web)
+  <artifactId>wavemaker-app-parent</artifactId>
+  <version>1.0.0-20260513064225</version>    ← PARENT_VERSION (example)
+</parent>
+<groupId>ai.wavemaker.project</groupId>      ← changed (same as web)
+<artifactId>PROJECT_NAME</artifactId>
+<properties>
+  <wavemaker.app.runtime.ui.version>1.0.0-next.27579</wavemaker.app.runtime.ui.version>  ← RUNTIME_UI_VERSION (example)
+  <wavemaker.artifactType>wmmobile</wavemaker.artifactType>
+</properties>

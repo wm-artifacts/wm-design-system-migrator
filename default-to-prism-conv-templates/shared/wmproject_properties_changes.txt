@@ -1,0 +1,46 @@
+WMPROJECT.PROPERTIES CHANGES REFERENCE
+=======================================
+Shows exactly what changes in .wmproject.properties during non-prism → prism conversion.
+
+❌ NON-PRISM (before):
+  <entry key="template">DEFAULT</entry>
+  <entry key="studioProjectUpgradeVersion">1114.09</entry>
+
+✅ PRISM (after):
+  <entry key="template">PRISM</entry>
+  <entry key="studioProjectUpgradeVersion">1115.07</entry>
+
+OPTIONAL (if --project-name is provided):
+  <entry key="displayName">OLD_NAME</entry>  →  <entry key="displayName">NEW_NAME</entry>
+  <entry key="name">OLD_NAME</entry>          →  <entry key="name">NEW_NAME</entry>
+  <entry key="packagePrefix">com.OLD_NAME</entry>  →  <entry key="packagePrefix">com.NEW_NAME</entry>
+
+
+CRITICAL — ADD supportedLanguages WHEN MISSING:
+================================================
+Non-prism projects don't store supportedLanguages in .wmproject.properties; the
+data lives in i18n/<lang>.json. PRISM's Angular codegen reads it from the
+property and crashes if it's absent while languageBundleSources=STATIC:
+
+  /root/.wm/node_modules/angular-codegen/.../update-angular-json.js
+  TypeError: Cannot convert undefined or null to object
+      at Function.values (<anonymous>)
+      at updateAngularJSON
+
+Trigger condition:
+  - <entry key="languageBundleSources">STATIC</entry> is present, AND
+  - <entry key="supportedLanguages">...</entry> is NOT present.
+
+Add (single-line JSON, no XML escaping needed for quotes in element text):
+
+  <entry key="supportedLanguages">{"en":{"messages":{},"formats":{},"files":{"angular":"en","fullCalendar":null,"moment":null},"prefabMessages":{}}}</entry>
+
+If the project has multiple i18n/<lang>.json files, the value should be a
+JSON object keyed by language code, with each value matching the contents of
+the corresponding i18n/<lang>.json (the codegen only reads .files.angular,
+but Studio uses the rest at runtime).
+
+EXAMPLE — adjacent context for placement:
+  <entry key="preferBrowserLang">true</entry>
+  <entry key="supportedLanguages">{"en":{...}}</entry>          ← NEW
+  <entry key="serviceDefSources">STATIC</entry>

@@ -1,0 +1,35 @@
+<!--
+  PRISM PAGE LAYOUT TEMPLATE
+  ===========================
+  Use this as reference for how a page's Main.html should look after prism conversion.
+
+  Key structural changes vs non-prism:
+    1. <wm-left-panel> is a DIRECT child of <wm-page> (NOT inside <wm-content>)
+    2. <wm-left-panel> gets navtype="rail" navheight="full" added
+    3. <wm-header> is INSIDE <wm-content>
+    4. <wm-footer> is INSIDE <wm-content>
+    5. <wm-top-nav> is REMOVED entirely
+
+  NON-PRISM (OLD) layout:
+  ─────────────────────────
+  <wm-page name="mainpage" pagetitle="Main">
+      <wm-header content="header" name="header" height="auto"></wm-header>
+      <wm-top-nav name="topnav" content="topnav"></wm-top-nav>      ← REMOVED in prism
+      <wm-content name="content">
+          <wm-left-panel columnwidth="2" name="leftpanel" content="leftnav"></wm-left-panel>   ← moved OUT
+          <wm-page-content columnwidth="10" name="mainContent"></wm-page-content>
+      </wm-content>
+      <wm-footer name="footer" content="footer"></wm-footer>         ← moved IN
+  </wm-page>
+
+  PRISM (NEW) layout:
+  ─────────────────────────
+-->
+<wm-page name="mainpage" pagetitle="Main">
+    <wm-left-panel columnwidth="2" name="leftpanel" content="leftnav" navtype="rail" navheight="full"></wm-left-panel>
+    <wm-content name="content">
+        <wm-header content="header" name="header" height="auto"></wm-header>
+        <wm-page-content columnwidth="10" name="mainContent"></wm-page-content>
+        <wm-footer name="footer" content="footer"></wm-footer>
+    </wm-content>
+</wm-page>

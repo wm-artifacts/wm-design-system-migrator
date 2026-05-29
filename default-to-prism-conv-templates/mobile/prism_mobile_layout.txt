@@ -1,0 +1,72 @@
+MOBILE PAGE HTML LAYOUT CONVERSION — PRISM AUTO-LAYOUT
+=======================================================
+Source: convert_all.py (auto-layout-wm-py project)
+
+In PRISM mobile, WaveMaker layout widgets are converted to wm-container with autoLayout.
+Apply these transformations to ALL *.html files under src/main/webapp/pages/.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONVERSION 1 — wm-linearlayout → wm-container
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ NON-PRISM:
+<wm-linearlayout name="layout1" direction="column" horizontalalign="center" verticalalign="top" spacing="8">
+  ...children...
+</wm-linearlayout>
+
+✅ PRISM:
+<wm-container name="container{N}" direction="column" alignment="top-center" gap="8" width="fill" class="app-default-container" variant="default" autoLayout="true">
+  ...children...
+</wm-container>
+
+ATTRIBUTE MAPPING:
+- name          → auto-assign "container{N}" (sequential, start from 1)
+- direction     → copy as-is (default "column" if missing)
+- horizontalalign + verticalalign → combined into alignment:
+    alignment = "{vertical}-{horizontal}" where:
+      vertical:   top=top, center=middle, bottom=bottom   (default: top)
+      horizontal: left=left, center=center, right=right   (default: left)
+    Examples: "center"+"top" → "top-center";  "left"+"center" → "middle-left"
+    If neither present → alignment="top-left"
+- spacing       → gap (copy value); if missing → gap="4"
+- ADD:  width="fill"  class="app-default-container"  variant="default"  autoLayout="true"
+- REMOVE: horizontalalign, verticalalign, spacing (replaced by alignment and gap)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONVERSION 2 — wm-layoutgrid → nested wm-container
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ NON-PRISM:
+<wm-layoutgrid name="grid1">
+  <wm-gridrow name="row1">
+    <wm-gridcolumn name="col1" columnwidth="6">...content A...</wm-gridcolumn>
+    <wm-gridcolumn name="col2" columnwidth="6">...content B...</wm-gridcolumn>
+  </wm-gridrow>
+</wm-layoutgrid>
+
+✅ PRISM:
+<wm-container name="container{N}" direction="column" alignment="top-left" gap="8" width="fill" class="app-default-container" variant="default" autoLayout="true">
+  <wm-container name="grid1_1" direction="row" alignment="top-left" gap="4" width="fill" class="app-default-container" variant="default" autoLayout="true">
+    <wm-container name="grid1_1_1" flexgrow="1" direction="column" alignment="top-left" gap="4" width="fill" class="app-default-container" variant="default" autoLayout="true">...content A...</wm-container>
+    <wm-container name="grid1_1_2" flexgrow="1" direction="column" alignment="top-left" gap="4" width="fill" class="app-default-container" variant="default" autoLayout="true">...content B...</wm-container>
+  </wm-container>
+</wm-container>
+
+RULES:
+- wm-layoutgrid → outer wm-container (direction=column, gap=8)
+- wm-gridrow    → inner wm-container (direction=row, gap=4), named "{gridName}_{rowIndex}"
+- wm-gridcolumn with siblings → wm-container (flexgrow=1, direction=column, gap=4), named "{rowName}_{colIndex}"
+- wm-gridcolumn ALONE (single child) → UNWRAP: move its children directly into the row container, remove the column wrapper
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONVERSION 3 — wm-linearlayoutitem → unwrap or container
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- wm-linearlayoutitem with ONE child   → UNWRAP: move child up to parent, remove the item tag
+- wm-linearlayoutitem with MULTIPLE children → convert to wm-container (same attributes as linearlayout),
+  mark page as "needs review" since alignment context may be lost
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PAGES TO SKIP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Files that do not contain <wm-linearlayout, <wm-layoutgrid, or <wm-linearlayoutitem → skip (no changes needed)
