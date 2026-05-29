@@ -1,12 +1,12 @@
 # WaveMaker DEFAULT → DesignSystem Migration
 
-> Claude Code skill that converts WaveMaker DEFAULT-template projects (from 11.x version WEB & NATIVE_MOBILE) to the DesignSystem design system — fully automated, producing a Studio-importable ZIP.
+> A WaveMaker DesignSystem migration skill converts WaveMaker DEFAULT-template projects (from 11.x version WEB & NATIVE_MOBILE) to the DesignSystem design system — fully automated, producing a Studio-importable ZIP.
 
 ---
 
 ## What this skill does?
 
-A set of Claude slash commands that take a WaveMaker DEFAULT project (folder or `.zip`) and mechanically rewrite every file that must change to make it a valid DesignSystem project. No manual editing. Output is a ZIP ready to drag into WaveMaker Studio.
+A skill take a WaveMaker DEFAULT project (folder or `.zip`) and automcatically rewrite every file that must change to make it a valid DesignSystem project. No manual editing. Output is a ZIP ready to drag into WaveMaker Studio.
 
 ---
 
@@ -142,7 +142,7 @@ The skill prompts for these at runtime and lets you override them — paste valu
 
 ## Summary
 
-This Claude Code skill automates the migration of WaveMaker 11.x DEFAULT-template WEB and NATIVE_MOBILE projects to the DesignSystem design system. It performs mechanical rewrites across project configuration, layouts, variables, themes, design tokens, and package scopes, producing a Studio-importable ZIP with minimal manual effort.
+This skill automates the migration of WaveMaker 11.x DEFAULT-template WEB and NATIVE_MOBILE projects to the DesignSystem design system. It performs mechanical rewrites across project configuration, layouts, variables, themes, design tokens, and package scopes, producing a Studio-importable ZIP with minimal manual effort.
 
 The migration includes:
 
