@@ -186,9 +186,8 @@ All remaining steps operate on `TARGET_DIR`.
 
 ## PHASE 1 — DesignSystem Conversion (skip entirely if RUN_DESIGNSYSTEM = false)
 
-Use the **Read** tool to load `.claude/commands/wm-designsystem-conv.md` (sibling file,
-same directory as this file). **Do NOT use the Skill tool** — there is no registered
-skill for this; the implementation lives entirely in that `.md` file.
+Use the **Read** tool to load `../wm-designsystem-conv/SKILL.md` (sibling skill folder).
+**Do NOT use the Skill tool** — read the file directly and execute its steps inline.
 
 Execute **STEP 4 through STEP 13** from that file inline, using the
 variables already resolved in STEP 0–2 above:
@@ -222,9 +221,8 @@ proceeding to the next step.
 
 ## PHASE 2 — AutoLayout Conversion (skip entirely if RUN_AUTOLAYOUT = false)
 
-Use the **Read** tool to load `.claude/commands/wm-autolayout-conv.md` (sibling file,
-same directory as this file). **Do NOT use the Skill tool** — there is no registered
-skill for this; the implementation lives entirely in that `.md` file.
+Use the **Read** tool to load `../wm-autolayout/SKILL.md` (sibling skill folder).
+**Do NOT use the Skill tool** — read the file directly and execute its steps inline.
 
 Execute **STEP 1 and STEP 3** from that file inline, using the
 variables already resolved in STEP 0 above:
