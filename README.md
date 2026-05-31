@@ -19,9 +19,8 @@ npx skills add wm-artifacts/wm-design-system-migrator
 ```
 
 Add specific skill or add them all when prompted.
-```
-    The wm-studio-migrate skill is the main skill that will perform the migration through a pipeline. The other skills must be added for the pipeline to work.
-```
+
+The wm-studio-migrate skill is the main skill that will perform the migration through a pipeline. The other skills must be added for the pipeline to work.
 
 ---
 
