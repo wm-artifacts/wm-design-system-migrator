@@ -56,7 +56,7 @@ If `SOURCE_INPUT` is missing, ask: *"Please provide the path to the non-designsy
 
 If `SOURCE_INPUT` ends with `.zip` (case-insensitive):
 1. Verify the file exists — if not, abort: *"Zip file not found: `<SOURCE_INPUT>`."*
-2. Set `SOURCE_ZIP_BASENAME` = zip filename without extension (e.g. `MyApp.zip` → `MyApp`). Used in STEP 13b to name the output zip `<SOURCE_ZIP_BASENAME>_conv_designsystem.zip`.
+2. Set `SOURCE_ZIP_BASENAME` = zip filename without extension (e.g. `MyApp.zip` → `MyApp`). Used in STEP 13b to name the output zip `<SOURCE_ZIP_BASENAME>_conv_ds.zip`.
 3. Determine `EXTRACT_DIR`:
    - `EXTRACT_DIR` = `<dirname(SOURCE_INPUT)>/<SOURCE_ZIP_BASENAME>/`
    - Example: `/tmp/MyApp.zip` → `EXTRACT_DIR = /tmp/MyApp/`
@@ -768,7 +768,7 @@ Let:
 - `PARENT_DIR` = directory containing `TARGET_DIR`
 - `FOLDER_BASENAME` = basename of `TARGET_DIR`
 - `ZIP_NAME` — determined by input type:
-  - Input was a zip → `ZIP_NAME = <SOURCE_ZIP_BASENAME>_conv_designsystem`  (e.g. `MyApp_conv_designsystem`)
+  - Input was a zip → `ZIP_NAME = <SOURCE_ZIP_BASENAME>_conv_ds`  (e.g. `MyApp_conv_ds`)
   - Input was a folder → `ZIP_NAME = <FOLDER_BASENAME>`
 - `ZIP_PATH` = `<PARENT_DIR>/<ZIP_NAME>.zip`
 
