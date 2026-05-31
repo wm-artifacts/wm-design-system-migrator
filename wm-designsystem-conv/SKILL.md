@@ -609,9 +609,18 @@ Studio a head start, or to carry over custom CSS variables from `themes/<active>
 `design-tokens/` directory **before** import; mobile Studio expects it
 on disk (it does not auto-generate the foundation skeleton from a blank slate).
 
-The reference layout (from a fresh DesignSystem mobile project):
+**Source priority for the skeleton:**
+
+1. **User provided a reference project in STEP 2 (Option 2)** — use
+   `<REFERENCE_PROJECT>/src/main/webapp/design-tokens/` as the source.
+   This ensures the foundation matches the exact version the user is targeting.
+
+2. **No reference project provided** — fall back to the skeleton bundled with
+   this skill at `assets/mobile/design-tokens/`. No external dependency needed.
+
+Bundled skeleton structure (used when no reference is given):
 ```
-src/main/webapp/design-tokens/
+assets/mobile/design-tokens/
 ├── app.studio.override.css         # stub:  :root {}
 ├── dependencies.json               # []
 ├── themes-config.json              # {"activeTheme": "foundation-theme"}
@@ -620,18 +629,22 @@ src/main/webapp/design-tokens/
     ├── theme.png
     ├── android/
     │   ├── style.css   style.js   tokens.js   variables.js
-    │   └── assets/
+    │   └── assets/fonts/Roboto/   (Roboto TTF family + font.config.js)
     └── ios/
         ├── style.css   style.js   tokens.js   variables.js
-        └── assets/
+        └── assets/fonts/Roboto/   (Roboto TTF family + font.config.js)
 ```
 
 Steps:
 1. `rm -rf "<TARGET_DIR>/src/main/webapp/themes"`
-2. Copy the `design-tokens/` skeleton from a known-good reference DesignSystem mobile
-   project (e.g. `sample_mobile/src/main/webapp/design-tokens/`) into
-   `<TARGET_DIR>/src/main/webapp/design-tokens/`.
-3. Leave `theme.variables.js` at webapp root untouched (it stays
+2. Determine `DESIGN_TOKENS_SRC`:
+   - If reference project was given in STEP 2 → `<REFERENCE_PROJECT>/src/main/webapp/design-tokens`
+   - Otherwise → `assets/mobile/design-tokens`
+3. Copy into the target project:
+   ```bash
+   cp -r "<DESIGN_TOKENS_SRC>" "<TARGET_DIR>/src/main/webapp/design-tokens"
+   ```
+4. Leave `theme.variables.js` at webapp root untouched (it stays
    `export default {};`).
 
 Studio will repaint the foundation on the first project open, but having the
@@ -913,6 +926,7 @@ List any pages needing review (mobile multi-child linearlayoutitem), files skipp
 | `assets/mobile/pom_changes.xml` | MOBILE | Step 4 |
 | `assets/mobile/wm_rn_config_changes.txt` | MOBILE | Step 11 |
 | `assets/mobile/designsystem_mobile_layout.txt` | MOBILE | Step 8 |
+| `assets/mobile/design-tokens/` | MOBILE | Step 9 (full foundation skeleton — android + ios fonts, tokens, styles) |
 | `assets/shared/wmproject_properties_changes.txt` | Both | Step 5 |
 | `assets/shared/variables_json_changes.txt` | Both | Step 7 |
 | `assets/shared/migration_info.json` | Both | Step 12 |

@@ -25,8 +25,7 @@ Add specific skills or all when prompted. `/wm-studio-migrate` is the main pipel
 ## Prerequisites
 
 - Claude Code CLI
-- Python 3.9+ on PATH (used internally by the skill for JSON/XML processing; no install step needed beyond what macOS ships with)
-- For MOBILE conversions: access to a reference Design System mobile project to copy the `design-tokens/foundation/` skeleton from
+- Python 3.9+ on PATH (used internally; macOS ships with this)
 
 ---
 
@@ -111,7 +110,6 @@ The skill prompts for these at runtime and lets you override them — paste valu
 | Gap | Why |
 |---|---|
 | **Brand CSS / theme variables** | LESS-specific constructs (`darken()`, `lighten()`, `~"..."` wrappers) in the legacy theme cannot be mechanically translated to plain CSS variables. The skill creates a blank `:root {}` stub; brand customisation must be done manually via Studio's Theme panel or by hand-editing `design-tokens/app.override.css`. |
-| **MOBILE `design-tokens/` foundation skeleton** | The 40+ files in `design-tokens/foundation/` (Android + iOS style/token/variable files, assets) must be copied from a reference Design System mobile project. The skill tells you to do this; it does not generate the files itself. |
 | **Prefab migration** | Prefab-internal files are not touched. Prefabs are platform-agnostic and run as-is under Design System; if a prefab breaks at runtime it is a prefab-build issue, not a host-project conversion issue. |
 | **Java backend / services** | `services/`, JPA mappings, security config, `build.xml`, `mvnw` — template-agnostic, not touched and not needed. |
 | **Highly custom page HTML** | Non-standard widget nesting, inline `<script>` blocks referencing layout elements, or pages that already have a partial Design System structure may need a visual review after conversion. |
@@ -171,4 +169,4 @@ The migration includes:
 
 The skill is designed to handle the majority of standard WaveMaker projects deterministically, while also guarding against common migration failures discovered during testing.
 
-Certain advanced customisations — such as brand theme logic, custom page structures, and MOBILE design-token foundations — still require manual review or reference-project assets.
+Certain advanced customisations — such as brand theme logic and heavily custom page structures — still require manual review.

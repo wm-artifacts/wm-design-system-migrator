@@ -1,0 +1,132 @@
+<html>
+
+<head>
+    <link href="./android/style.css" rel="stylesheet">
+    <script type="module">
+    </script>
+    <style>
+        button, input {
+            padding: 8pt !important;
+            border-radius: 4pt !important;
+            border-width: 1pt !important;
+            border-style: solid !important;
+            display: block !important;
+            height: 28pt !important;
+            flex-grow: 0;
+            flex-shrink: 0;
+            font-size: 12pt;
+            width:160pt
+        }
+        div.app-label {
+            margin-left: 16pt !important;
+            margin-bottom: -6pt !important;
+            z-index: 1 !important;
+            padding: 0 8pt !important;
+            display: inline-block !important;
+            position: relative !important;
+        }
+        body {
+            margin: 0 !important;
+            background-color: #ffffff;
+            overflow: hidden;
+        }
+        .content {
+            padding: 8px !important;
+        }
+        .btn-panel {
+            display: flex !important;
+            flex-direction: row !important;
+            justify-content: flex-start !important;
+            align-items: flex-end !important;
+            padding-bottom: 8pt !important;
+        }
+        .btn-panel:last-child {
+            padding-bottom: 0 !important;
+        }
+        .box {
+            width: 28pt !important;
+            height: 28pt !important;
+            border-radius: 4pt !important;
+            margin-left: 8pt !important;
+            border: 1px solid #DDDDDD !important;
+            flex-shrink: 0;
+        }
+        @font-face {
+            font-family: Roboto;
+            src: url(./android/assets/fonts/./Roboto/Roboto-Regular.ttf);
+        }
+        @font-face {
+            font-family: Roboto;
+            src: url(./android/assets/fonts/./Roboto/Roboto-Regular.ttf);
+        }
+        .heading-text {
+            font-family: 'Roboto'
+        }
+        .body-text {
+            font-family: 'Roboto'
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wm-studio" style="transform: scale(0.72);transform-origin: left top;">
+        <div class="wm-right-panel-container">
+            <div class="file-container-pane">
+                <div class="wm-file-container">
+                    <div class="wm-workspace">
+                        <div class="workspace-content">
+                            <div class="canvas-panel">
+                                <div class="content">
+                                    <div>
+                                        <div class="btn-panel">
+                                            <button class="btn btn-primary app-button">
+                                                <span class="btn-caption">Button Primary</span>
+                                            </button>
+                                            <div class="box bg-primary app-tile"></div>
+                                        </div>
+                                        <div class="btn-panel">
+                                            <button class="btn btn-secondary app-button">
+                                                <span class="btn-caption">Button Secondary</span>
+                                            </button>
+                                            <div class="box app-mobile-navbar"></div>
+                                        </div>
+                                        <div class="btn-panel">
+                                            <input type="text" class="app-textbox" value="Input">
+                                            <div class="box app-page-content"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span class="app-label" style="display: none"></span>
+                                    </div>
+                                </div>
+                                <div style="border-top: 1px solid #ccc; padding: 8pt;width: 300pt">
+                                    <div style="font-size: 16pt; padding-bottom: 8pt;" class="heading-text">
+                                        <span>H : </span>
+                                        <span>Heading</span>
+                                    </div>
+                                    <div style="font-size: 12pt;" class="body-text">
+                                        <span>B : </span>
+                                        <span>Heading</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function() {
+            function getStyle(el , property) {
+                return window.getComputedStyle(el).getPropertyValue(property);
+            }
+            const label = document.querySelectorAll('.app-label')[0];
+            const labelColor = getStyle(label, 'color');
+            document.querySelectorAll('.heading-text span:last-child')[0].innerText ="Roboto";
+            document.querySelectorAll('.body-text span:last-child')[0].innerText = "Roboto";
+        })();
+    </script>
+</body>
+
+</html>
