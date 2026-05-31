@@ -10,6 +10,21 @@ A skill take a WaveMaker DEFAULT project (folder or `.zip`) and automcatically r
 
 ---
 
+## Installation
+
+Install the skill globally via npm for it to be available to AI Agents:
+
+```bash
+npx skills add wm-artifacts/wm-design-system-migrator
+```
+
+Add specific skill or add them all when prompted.
+```
+    The wm-studio-migrate skill is the main skill that will perform the migration through a pipeline. The other skills must be added for the pipeline to work.
+```
+
+---
+
 ## Prerequisites
 
 - Claude Code CLI (the skill runs inside Claude)
