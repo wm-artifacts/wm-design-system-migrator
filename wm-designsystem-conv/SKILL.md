@@ -460,6 +460,27 @@ For each page HTML file:
 - All other elements (especially `<wm-page-content>` and its children) — preserve exactly.
 - Dialogs (`<wm-dialog>`) outside `<wm-content>` stay outside `<wm-content>`.
 
+**Attribute injection — safe approach (CRITICAL):**
+
+When adding `navtype="rail" navheight="full"` to the `<wm-left-panel>` opening tag,
+use a regex that targets **only the opening-tag bracket**, not a strip operation on
+the full element string.
+
+```python
+# CORRECT — regex targets only the opening-tag '>'
+import re
+line = re.sub(
+    r'(<wm-left-panel\b[^>]*?)(>)',
+    r'\1 navtype="rail" navheight="full"\2',
+    line, count=1
+)
+```
+
+**Do NOT** use `rstrip('>')` or `strip('>')` on the element string. Because
+`<wm-left-panel …></wm-left-panel>` ends with `>`, those strip operations remove
+the closing `>` from `</wm-left-panel>` as well, producing the malformed
+`</wm-left-panel` (missing bracket).
+
 **OLD layout:**
 ```html
 <wm-page name="mainpage" pagetitle="Main">
