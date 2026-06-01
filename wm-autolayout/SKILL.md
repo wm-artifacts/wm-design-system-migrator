@@ -470,12 +470,53 @@ rm -f "<PROJECT_DIR>/wm_grid_conv_tmp.py"
 
 ---
 
+### STEP 3b · Generate the importable ZIP (standalone only)
+
+> **Skip this step when invoked from `wm-studio-migrate`** — the parent orchestrator
+> handles ZIP creation in its own PHASE 3. Only execute when running `wm-autolayout-conv`
+> directly.
+
+If `DRY_RUN` is `true`, skip this step entirely (dry-run never writes files or produces a ZIP).
+
+Let:
+- `PARENT_DIR` = directory containing `PROJECT_DIR`
+- `FOLDER_BASENAME` = basename of `PROJECT_DIR`
+- `ZIP_NAME` = `<FOLDER_BASENAME>_conv_al`
+- `ZIP_PATH` = `<PARENT_DIR>/<ZIP_NAME>.zip`
+
+Zip from **inside** `PROJECT_DIR` so project files land at the ZIP root with no
+enclosing folder. Studio's `createNewProject` import path expects `.wmproject.properties`
+at the ZIP root; a nested folder triggers a stricter validation code path that causes
+import failures.
+
+```bash
+cd "<PROJECT_DIR>" \
+  && rm -f "../<ZIP_NAME>.zip" \
+  && zip -rq "../<ZIP_NAME>.zip" . -x "*.DS_Store"
+```
+
+Capture `ZIP_SIZE` via `ls -lh "../<ZIP_NAME>.zip"`.
+
+If `zip` is not available on the user's system → fall back to:
+```bash
+python3 -c "
+import shutil, os
+os.chdir('<PROJECT_DIR>')
+shutil.make_archive('../<ZIP_NAME>', 'zip', '.', '.')
+"
+```
+
+Pass `ZIP_PATH` and `ZIP_SIZE` into the STEP 4 summary.
+
+---
+
 ### STEP 4 · Print conversion summary
 
 ```
 Grid & LinearLayout → Container Conversion — [DRY RUN: no files written | COMPLETE]
 
 Project: <PROJECT_DIR>
+ZIP:     <ZIP_PATH>  (<ZIP_SIZE>)    ← omit this line when run from wm-studio-migrate or when DRY_RUN
 
 Pages converted:
   ✓ Main          — 1 layoutgrid, 2 gridrow, 4 gridcolumn, 0 linearlayout, 0 linearlayoutitem, 3 collapsed
@@ -502,7 +543,8 @@ Responsive layout:
   [--responsive: mobile breakpoint CSS appended to each page's .css file]
 
 Next steps:
-  1. Open the project in WaveMaker Studio and preview each converted page
+  1. Import <ZIP_PATH> into WaveMaker Studio    ← standalone only; omit when run from wm-studio-migrate
+     (or: Open the project in WaveMaker Studio and preview each converted page)
   2. Adjust gap / padding / alignment on wm-containers if needed
   3. Use Studio's flex properties panel to fine-tune individual containers
   4. For custom breakpoints, edit the page .css file or re-run with --responsive

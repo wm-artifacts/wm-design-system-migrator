@@ -240,6 +240,7 @@ variables already resolved in STEP 0 above:
 |---|---|
 | STEP 0 — Parse arguments | Done in STEP 0 above |
 | STEP 2 — Show summary + confirm | Autolayout scope shown in STEP 2 above; user confirmed in STEP 0 |
+| STEP 3b — Generate ZIP | Handled by PHASE 3 of this orchestrator |
 | STEP 4 — Print summary | Handled by STEP 4 of this orchestrator |
 
 Execute **STEP 1** (validate project and discover target HTML files) and

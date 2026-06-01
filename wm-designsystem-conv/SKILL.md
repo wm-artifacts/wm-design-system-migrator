@@ -792,9 +792,13 @@ Otherwise, write the template content to `<TARGET_DIR>/migration_info.md`.
 
 ---
 
-### STEP 13b · Generate the importable ZIP (always)
+### STEP 13b · Generate the importable ZIP (standalone only)
 
-**This step is always run.** The whole point of the skill is to produce a zip
+> **Skip this step when invoked from `wm-studio-migrate`** — the parent orchestrator
+> handles ZIP creation in its own PHASE 3. Only execute when running `wm-designsystem-conv`
+> directly.
+
+**This step is always run when standalone.** The whole point of the skill is to produce a zip
 the user can import into WaveMaker Studio — never leave them to zip it
 themselves.
 
@@ -806,16 +810,19 @@ Let:
   - Input was a folder → `ZIP_NAME = <FOLDER_BASENAME>`
 - `ZIP_PATH` = `<PARENT_DIR>/<ZIP_NAME>.zip`
 
-Run (don't include the parent path in the archive; the zip's top-level entry
-must be `<FOLDER_BASENAME>/...` so Studio's import detects the project root):
+Zip from **inside** `TARGET_DIR` so project files land at the ZIP root with no
+enclosing folder. Studio's `createNewProject` import path expects `.wmproject.properties`
+at the ZIP root; a nested folder triggers a stricter validation code path
+(`ProjectValidationManagerImpl`) that rejects files lacking a DOCTYPE declaration.
 
 ```bash
-cd "<PARENT_DIR>" \
-  && rm -f "<ZIP_NAME>.zip" \
-  && zip -rq "<ZIP_NAME>.zip" "<FOLDER_BASENAME>" -x "*.DS_Store"
+cd "<TARGET_DIR>" \
+  && rm -f "../<ZIP_NAME>.zip" \
+  && zip -rq "../<ZIP_NAME>.zip" . -x "*.DS_Store"
 ```
 
 Notes:
+- Zip from inside `TARGET_DIR` (`.` = project root), output goes one level up (`../`).
 - `rm -f` first so a re-run of the skill overwrites cleanly.
 - `-x "*.DS_Store"` keeps macOS folder metadata out of the archive.
 - `-rq` = recursive + quiet (errors still print).
@@ -827,9 +834,15 @@ After zip:
 - Capture `ZIP_SIZE` (human-readable, e.g. via `ls -lh`).
 - Pass `ZIP_PATH` and `ZIP_SIZE` into the STEP 14 summary.
 
-If `zip` is not available on the user's system → fall back to `python3 -c
-"import shutil; shutil.make_archive(...)"` rather than asking the user to
-install anything. Either way, end with a single file at `ZIP_PATH`.
+If `zip` is not available on the user's system → fall back to:
+```bash
+python3 -c "
+import shutil, os
+os.chdir('<TARGET_DIR>')
+shutil.make_archive('../<ZIP_NAME>', 'zip', '.', '.')
+"
+```
+Either way, end with a single file at `ZIP_PATH`.
 
 ---
 
