@@ -476,16 +476,79 @@ Find all files: `<TARGET_DIR>/src/main/webapp/pages/*/*.html`
 
 For each page HTML file:
 1. Skip if it does not contain `<wm-page`.
-2. Check if `<wm-left-panel` is **inside** `<wm-content>` — if so, restructure.
-3. If `<wm-left-panel` is already **outside** `<wm-content>` — skip.
+2. Check if a **real** (non-commented) `<wm-left-panel` is **inside** `<wm-content>` — if so, restructure.
+3. If `<wm-left-panel` is already **outside** `<wm-content>`, or only appears inside HTML comments — skip.
 
 **Rules:**
 - `<wm-left-panel>` — move from inside `<wm-content>` to direct child of `<wm-page>` (before `<wm-content>`). Add `navtype="rail" navheight="full"` if not already present. Preserve all existing attributes.
-- `<wm-header>` — move from outside `<wm-content>` to **first** child inside `<wm-content>`. Preserve all attributes.
-- `<wm-footer>` — move from outside `<wm-content>` to **last** child inside `<wm-content>`. Preserve all attributes.
-- `<wm-top-nav>` — remove entirely.
+- `<wm-header>` — if a **real** (non-commented) instance exists outside `<wm-content>`, move it to **first** child inside `<wm-content>`. Preserve all attributes. **Leave commented-out `<!-- <wm-header…> -->` exactly as-is.**
+- `<wm-footer>` — if a **real** (non-commented) instance exists, move it to **last** child inside `<wm-content>`. **Leave commented-out `<!-- <wm-footer…> -->` exactly as-is.**
+- `<wm-top-nav>` — remove entirely (only real instances; ignore commented ones).
 - All other elements (especially `<wm-page-content>` and its children) — preserve exactly.
 - Dialogs (`<wm-dialog>`) outside `<wm-content>` stay outside `<wm-content>`.
+
+**CRITICAL — HTML comment awareness:**
+
+Many WaveMaker projects comment out `<wm-header>`, `<wm-footer>`, or `<wm-left-panel>` in
+individual pages (e.g. `<!-- <wm-header content="header"></wm-header>-->`). A naïve regex
+will match tags inside comments, extract them, and produce broken output like:
+
+```html
+<!-- </wm-header>-->                        ← orphaned comment fragment
+<wm-left-panel ...>
+    <wm-content>...</wm-content></wm-left-panel>   ← wm-content trapped inside left-panel
+```
+
+**Always use a comment-aware find helper** when locating structural elements:
+
+```python
+def is_in_comment(text, pos):
+    """True if pos falls inside an <!-- ... --> block."""
+    last_open  = text.rfind('<!--', 0, pos)
+    if last_open == -1: return False
+    last_close = text.rfind('-->', 0, pos)
+    return last_close < last_open   # no '-->' between last '<!--' and pos
+
+def find_tag(text, pattern):
+    """First re.finditer match of pattern that is NOT inside a comment."""
+    for m in re.finditer(pattern, text, re.DOTALL):
+        if not is_in_comment(text, m.start()):
+            return m
+    return None
+```
+
+Use `find_tag` for every structural element lookup: `wm-left-panel`, `wm-header`, `wm-footer`, `wm-top-nav`.
+
+**CRITICAL — Self-closing vs full-element regex:**
+
+When building the pattern to capture a structural element, use `/>` (slash required) for the
+self-closing alternative — **never** `/?>` (optional slash). The `/?` form matches a bare `>`
+before the closing tag is reached, so the regex captures only the opening tag and leaves the
+orphaned `</wm-left-panel>` behind in the text:
+
+```python
+# WRONG — '/?' makes slash optional; matches bare '>' and captures opening tag only
+r'<wm-left-panel\b[^>]*(?:/?>|>.*?</wm-left-panel>)'
+#                         ^^^  bare '>' satisfies this alternative first
+
+# CORRECT — '/' required; falls through to the closing-tag alternative
+r'<wm-left-panel\b[^>]*(?:/>|>.*?</wm-left-panel>)'
+```
+
+Apply the same rule to `wm-header`, `wm-footer`, `wm-top-nav` patterns.
+
+**Check inside `<wm-content>` without comments:**
+
+When deciding whether `<wm-left-panel` is inside `<wm-content>`, strip HTML comments from the
+inner content before checking — otherwise a `<!-- <wm-left-panel …> -->` comment triggers
+restructuring when there is no real element to move:
+
+```python
+cm = re.search(r'<wm-content\b[^>]*>(.*?)</wm-content>', text, re.DOTALL)
+inner_real = re.sub(r'<!--.*?-->', '', cm.group(1), flags=re.DOTALL)
+if '<wm-left-panel' not in inner_real:
+    return text, False   # nothing real to restructure
+```
 
 **Attribute injection — safe approach (CRITICAL):**
 
@@ -496,10 +559,10 @@ the full element string.
 ```python
 # CORRECT — regex targets only the opening-tag '>'
 import re
-line = re.sub(
+lp_tag = re.sub(
     r'(<wm-left-panel\b[^>]*?)(>)',
     r'\1 navtype="rail" navheight="full"\2',
-    line, count=1
+    lp_tag, count=1
 )
 ```
 
