@@ -347,7 +347,7 @@ This is now safe because:
 
 ---
 
-## PHASE 5 — ZIP Creation (always runs)
+## PHASE 5 — Packaging (always runs)
 
 Output ZIP is always named `<SOURCE_ZIP_BASENAME>_conv_ds.zip` and placed in the same
 directory as the source ZIP (or `TARGET_DIR`'s parent). Files are zipped from inside

@@ -192,7 +192,7 @@ When invoked via `/wm-design-system-migrator`, theme token migration happens **A
 1. **PHASE 1** — DesignSystem conversion
 2. **PHASE 3** — Theme token extraction (reads `themes/` folder)
 3. **PHASE 3.5** — Delete legacy `themes/` folder (safe: tokens already extracted)
-4. **PHASE 5** — ZIP creation with tokens in `design-tokens/app.override.css`
+4. **PHASE 5** — Packaging with tokens in `design-tokens/app.override.css`
 
 This execution order ensures no data loss and proper token capture before cleanup.
 
