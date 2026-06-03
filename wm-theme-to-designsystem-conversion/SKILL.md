@@ -73,34 +73,102 @@ and match legacy theme tokens against foundation tokens for intelligent override
 
 ### STEP 3 · Extract tokens from style.css
 
-Parse style.css to identify global CSS variables in `:root {}` selector.
-Categorize each variable into:
-- **Typography**: patterns matching `*font-*`, `*text-*`, `*line-height*`, `*letter-spacing*`
-- **Colors**: patterns matching `*color*`, `*-bg*`, `*-text*`, `*-border*`
-- **Spacing**: patterns matching `*gap*`, `*margin*`, `*padding*`, `*space*`, `*-size*` (when unit is length)
+Parse style.css to identify and extract design tokens. Use **TWO extraction strategies**:
 
-For each extracted variable, record:
-- Variable name (e.g., `--my-primary-color`)
+#### Strategy 1: CSS Variables in `:root {}`
+
+If `:root { --var: value; }` exists, extract CSS variable declarations:
+- Variable name (e.g., `--brand-primary`)
 - Variable value (e.g., `#FF7250`)
-- Category (typography / color / spacing)
+- Category (typography / color / spacing based on name patterns)
 
-Store in a structured object:
+#### Strategy 2: Actual CSS Property Values (fallback)
+
+If `:root` variables are minimal or absent, **extract actual CSS property values** from the stylesheet:
+
+**Colors:**
+- Scan all selectors for `color:`, `background-color:`, `border-color:` properties
+- Extract hex (`#FF7250`), rgb (`rgb(255, 114, 80)`), named colors
+- Map to semantic foundation names:
+  - Primary colors → `--wm-color-primary`
+  - Secondary colors → `--wm-color-secondary`
+  - Error/danger colors → `--wm-color-error`
+  - Success colors → `--wm-color-success`
+  - Warning colors → `--wm-color-warning`
+  - Info colors → `--wm-color-info`
+  - Neutral/gray colors → `--wm-color-surface`, `--wm-color-on-surface`
+  - Custom colors → `--wm-<custom-name>` (with `--wm-` prefix)
+
+**Typography:**
+- Scan for `font-family:`, `font-size:`, `font-weight:`, `line-height:`, `letter-spacing:`
+- Extract from heading selectors (h1, h2, h3, .heading, .title)
+- Extract from body text selectors (body, p, .text, .label)
+- Map to semantic foundation names:
+  - Primary font family → `--wm-font-family-brand`
+  - Fallback font family → `--wm-font-family-plain`
+  - H1 size → `--wm-h1-font-size`, `--wm-h1-font-weight`, `--wm-h1-line-height`
+  - Body size → `--wm-font-size-base`, `--wm-font-weight-normal`
+  - Custom typography → `--wm-<custom-name>`
+
+**Spacing:**
+- Scan for `padding:`, `margin:`, `gap:`, `border-radius:`, `width:`, `height:` properties
+- Extract numeric values with units (px, em, rem, %)
+- Map to semantic foundation names:
+  - Base gaps → `--wm-gap-base`
+  - Base margins → `--wm-margin-base`
+  - Base padding → `--wm-padding-base`, `--wm-padding-vertical-base`, `--wm-padding-horizontal-base`
+  - Border radius → `--wm-border-radius-sm`, `--wm-border-radius-md`, `--wm-border-radius-lg`
+  - Component dimensions → `--wm-<component>-<dimension>` (e.g., `--wm-input-height`, `--wm-header-padding`)
+
+#### Extraction Priority
+
+1. **Prefer existing `:root` CSS variables** if present (explicit intent)
+2. **Fall back to actual property values** if `:root` has fewer than 10 variables
+3. **Combine both** if both exist (CSS variables + additional properties)
+
+#### Output Structure
+
+Store in a structured object with foundation naming applied:
+
 ```python
 tokens = {
     'typography': [
-        {'name': '--my-font-family', 'value': 'Arial, sans-serif', 'source': 'style.css'},
+        {'name': '--wm-font-family-brand', 'value': 'Arial, sans-serif', 'source': 'style.css'},
+        {'name': '--wm-h1-font-size', 'value': '32px', 'source': 'h1 selector'},
+        {'name': '--wm-h1-font-weight', 'value': '700', 'source': 'h1 selector'},
         ...
     ],
     'colors': [
-        {'name': '--my-primary', 'value': '#FF7250', 'source': 'style.css'},
+        {'name': '--wm-color-primary', 'value': '#FF7250', 'source': 'style.css or .primary selector'},
+        {'name': '--wm-color-error', 'value': '#F44336', 'source': '.error selector'},
         ...
     ],
     'spacing': [
-        {'name': '--my-gap', 'value': '8px', 'source': 'style.css'},
+        {'name': '--wm-gap-base', 'value': '8px', 'source': 'style.css or .gap selector'},
+        {'name': '--wm-padding-base', 'value': '16px', 'source': 'body selector'},
+        {'name': '--wm-border-radius-md', 'value': '8px', 'source': '.rounded-md selector'},
         ...
     ],
 }
 ```
+
+#### Semantic Mapping Rules
+
+| Legacy/Found Value | Foundation Token | Rule |
+|---|---|---|
+| Primary brand color | `--wm-color-primary` | Most prominent color in design |
+| Secondary brand color | `--wm-color-secondary` | Second most prominent |
+| Error/danger color | `--wm-color-error` | Red/danger tones |
+| Success/check color | `--wm-color-success` | Green/success tones |
+| Warning color | `--wm-color-warning` | Yellow/orange warning tones |
+| Info/blue color | `--wm-color-info` | Blue/info tones |
+| Primary font family | `--wm-font-family-brand` | Main heading font |
+| Fallback font family | `--wm-font-family-plain` | Body/system font |
+| 8px spacing | `--wm-gap-base` | Base unit for gaps |
+| 4px spacing | `--wm-margin-base` | Base unit for margins |
+| 4-8px border radius | `--wm-border-radius-sm` | Small radius |
+| 8px border radius | `--wm-border-radius-md` | Medium radius |
+| 16px+ border radius | `--wm-border-radius-lg` | Large radius |
 
 ---
 
@@ -327,6 +395,183 @@ Next Steps:
 
 If `--dry-run`: note that no files were written.
 If `--verbose`: show the full token list with mappings and font import URL.
+
+---
+
+## Edge Cases and Error Handling
+
+### Missing style.css File
+
+**Behavior:**
+- STEP 1 validation checks for `src/main/webapp/themes/<THEME_NAME>/style.css`
+- If missing → abort with error: *"No style.css found in theme folder."*
+
+**Solution:**
+- Ensure the theme folder contains a `style.css` file
+- If the theme has CSS in other files (`.less`, `.scss`), compile them to `style.css` first
+- If no theme styling exists, create a blank `style.css` with an empty `:root { }`
+
+---
+
+### Empty :root Variables (No CSS Variables Defined)
+
+**Behavior:**
+- If `style.css` exists but has no `:root { --var: value; }` definitions:
+  - **STEP 3 uses Strategy 2 (Fallback)** — extracts actual CSS property values
+  - Scans selectors for `color:`, `font-family:`, `font-size:`, `padding:`, `margin:`, `border-radius:`, etc.
+  - Maps found values to foundation semantic tokens automatically
+  - Creates `app.override.css` with extracted tokens using `--wm-*` naming
+
+**Example:**
+```css
+/* Input: style.css with properties but no :root variables */
+body { font-family: Arial, sans-serif; font-size: 14px; }
+h1 { color: #2294ef; font-size: 32px; font-weight: 700; }
+.primary-btn { background-color: #2294ef; padding: 10px 18px; }
+.error { color: #ff6464; }
+
+/* Output: app.override.css with foundation tokens */
+:root {
+  /* Typography Tokens */
+  --wm-font-family-plain: Arial, sans-serif;
+  --wm-font-size-base: 14px;
+  --wm-h1-font-size: 32px;
+  --wm-h1-font-weight: 700;
+  
+  /* Color Tokens */
+  --wm-color-primary: #2294ef;
+  --wm-color-error: #ff6464;
+  
+  /* Spacing Tokens */
+  --wm-btn-padding: 10px 18px;
+}
+```
+
+**Next step:**
+- No manual work needed! All values automatically extracted and mapped
+- User can fine-tune token names in `app.override.css` if needed
+- Studio will immediately use the extracted tokens
+
+---
+
+### CSS Variables Defined Outside :root Selector
+
+**Behavior:**
+- Only variables defined in `:root { }` scope are extracted (global scope)
+- Variables defined in other selectors (`.class-name { --var: value; }`) are **ignored**
+- This is intentional: component-scoped variables are not design tokens
+
+**Example:**
+```css
+:root {
+  --primary-color: #FF7250;        /* ✓ EXTRACTED */
+}
+
+.header {
+  --header-padding: 16px;          /* ✗ IGNORED (not in :root) */
+}
+
+body {
+  --body-margin: 0;                /* ✗ IGNORED (not in :root) */
+}
+```
+
+**Note:** Only `:root` variables are global design tokens. Component-specific CSS variables should remain in component stylesheets.
+
+---
+
+### Referenced Variable Does Not Exist
+
+**Behavior:**
+- If a token value contains `var(--referenced-name)` but that variable is not defined:
+  - The reference is **preserved as-is** in the output
+  - The browser CSS engine will fall back to initial value if reference fails at runtime
+
+**Example:**
+```css
+/* Input style.css */
+:root {
+  --primary-color: #FF7250;
+  --btn-hover-color: color-mix(in srgb, var(--primary-color), #000 20%);
+  --undefined-ref: var(--does-not-exist);  /* Reference to undefined variable */
+}
+
+/* Output app.override.css */
+:root {
+  --wm-color-primary: #FF7250;
+  --wm-btn-hover-color: color-mix(in srgb, var(--wm-color-primary), #000 20%);  /* ✓ Mapped correctly */
+  --wm-undefined-ref: var(--does-not-exist);  /* ✗ Kept as-is; will fail at runtime */
+}
+```
+
+**Risk:** At runtime, `--wm-undefined-ref` will not resolve. If this causes rendering issues:
+1. Check the source `style.css` for typos in variable names
+2. Verify the referenced variable was extracted
+3. Manually fix the reference in `app.override.css` or add the missing variable definition
+
+---
+
+### Duplicate Variable Names
+
+**Behavior:**
+- If the same variable name appears multiple times in `:root`:
+  - **First occurrence is kept** (CSS cascade: later values override)
+  - **Subsequent duplicates are discarded** with count reported in verbose mode
+- This is safe: CSS naturally handles duplicates via cascade
+
+**Example:**
+```css
+/* Input style.css */
+:root {
+  --primary-color: #FF7250;        /* KEPT */
+  --primary-color: #E91E63;        /* DISCARDED (duplicate) */
+  --primary-color: #2196F3;        /* DISCARDED (duplicate) */
+}
+
+/* Output app.override.css */
+:root {
+  --wm-color-primary: #FF7250;  /* Only the first value is kept */
+}
+```
+
+**Behavior reported in VERBOSE mode:**
+```
+ℹ Deduplication: Discarded 2 duplicate token(s)
+  - --wm-color-primary (kept first value: #FF7250, discarded: #E91E63, #2196F3)
+```
+
+---
+
+### CSS Variables With Complex Values
+
+**Behavior:**
+- Variables with complex values are extracted and preserved exactly:
+  - `calc()` expressions
+  - `color-mix()` functions
+  - `linear-gradient()` values
+  - Quoted strings with special characters
+
+**Handling:**
+- Values are extracted as-is (no simplification)
+- Variable references within values are **updated** to use mapped names
+- Quotes and special characters are preserved
+
+**Example:**
+```css
+/* Input */
+:root {
+  --gradient: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+  --calc-value: calc(var(--base-size) * 1.5);
+  --font-stack: "Roboto", "Arial", sans-serif;
+}
+
+/* Output */
+:root {
+  --wm-gradient: linear-gradient(90deg, var(--wm-color-primary) 0%, var(--wm-color-secondary) 100%);
+  --wm-calc-value: calc(var(--wm-base-size) * 1.5);
+  --wm-font-stack: "Roboto", "Arial", sans-serif;
+}
+```
 
 ---
 
