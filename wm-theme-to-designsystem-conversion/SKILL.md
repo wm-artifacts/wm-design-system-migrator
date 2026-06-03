@@ -449,7 +449,7 @@ Do you want to use this font family in the design system?
 /**
  * Design Token Overrides — Migrated from legacy theme
  * Theme: default
- * Source: /path/to/project/src/main/webapp/theme/default/style.css
+ * Source: /path/to/project/src/main/webapp/themes/default/style.css
  * 
  * These tokens override foundation.css values.
  * Foundation reference: wm-theme-conv/assets/foundation.css (standard design system tokens)

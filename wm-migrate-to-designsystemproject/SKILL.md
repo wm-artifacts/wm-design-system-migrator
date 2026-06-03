@@ -129,7 +129,7 @@ Detect `PLATFORM`:
 **Detect theme** (only if `RUN_THEME = true` and `THEME_NAME` was not provided via `--theme`):
 - Read `.wmproject.properties` and extract `<entry key="currentThemeName">…</entry>`
 - If found, set `THEME_NAME` = extracted value
-- If not found, scan `<SOURCE_DIR>/src/main/webapp/theme/` for subdirectories
+- If not found, scan `<SOURCE_DIR>/src/main/webapp/themes/` for subdirectories
   - If exactly one theme folder exists, use it
   - If multiple theme folders exist, ask user: *"Which theme to migrate? [list]\nEnter theme name:"*
   - If no theme folders exist, warn: *"No themes found; skipping Phase 3 (theme conversion)."* Set `RUN_THEME = false`
@@ -191,7 +191,7 @@ Continue (don't abort).
 
 If `RUN_THEME = true`, also show the theme scope:
 
-Check if `<SOURCE_DIR>/src/main/webapp/theme/<THEME_NAME>/style.css` exists.
+Check if `<SOURCE_DIR>/src/main/webapp/themes/<THEME_NAME>/style.css` exists.
 
 ```
 Theme scope (Phase 3):
@@ -222,7 +222,7 @@ All remaining steps operate on `TARGET_DIR`.
 Use the **Read** tool to load `../wm-projectconversion/SKILL.md` (sibling skill folder).
 **Do NOT use the Skill tool** — read the file directly and execute its steps inline.
 
-Execute **STEP 4 through STEP 13** from that file inline, using the
+Execute **STEP 4 through STEP 8.5** from that file inline, using the
 variables already resolved in STEP 0–2 above:
 
 | Variable | Source |
@@ -242,13 +242,17 @@ variables already resolved in STEP 0–2 above:
 | STEP 1 — Validate + detect platform | Done in STEP 1 above |
 | STEP 2 — Confirm target versions | Done in STEP 2 above |
 | STEP 3 — Copy project | Done in STEP 3 above |
-| STEP 13b — Generate ZIP | Handled by PHASE 3 of this orchestrator |
+| STEP 9 onwards — Handle after PHASE 3 | Theme tokens must be extracted BEFORE themes/ deletion |
+| STEP 13b — Generate ZIP | Handled by PHASE 4 of this orchestrator |
 | STEP 14 — Print summary | Handled by STEP 4 of this orchestrator |
 
-Execute **STEP 4 through STEP 13** in order, including all per-step mandatory
+Execute **STEP 4 through STEP 8.5** in order, including all per-step mandatory
 verifications defined in each step (XML parse check after STEP 5b, grep check
 after STEP 7, scope checks after STEP 10). Fix any verification failure before
 proceeding to the next step.
+
+**IMPORTANT:** Stop after STEP 8.5 — do NOT execute STEP 9 yet. STEP 9 (delete themes folder)
+must happen AFTER PHASE 3 (theme token extraction) to preserve the source files.
 
 ---
 
@@ -282,7 +286,12 @@ output to build the per-page counts for the unified summary.
 
 ---
 
-## PHASE 3 — Theme to DesignSystem Conversion (skip entirely if RUN_THEME = false)
+## PHASE 3 — Theme Token Migration (skip entirely if RUN_THEME = false)
+
+**EXECUTION ORDER CRITICAL:**
+1. Extract tokens from `src/main/webapp/themes/<THEME_NAME>/style.css` (while themes/ folder still exists)
+2. Write tokens to `src/main/webapp/design-tokens/app.override.css`
+3. THEN delete themes/ folder (in PHASE 3.5)
 
 Use the **Read** tool to load `../wm-theme-to-designsystem-conversion/SKILL.md` (sibling skill folder).
 **Do NOT use the Skill tool** — read the file directly and execute its steps inline.
@@ -321,7 +330,24 @@ Capture the token extraction summary and store for the unified STEP 4 report:
 
 ---
 
-## PHASE 4 — Packaging (always runs)
+## PHASE 3.5 — Delete Legacy Themes (happens AFTER PHASE 3)
+
+After theme tokens have been successfully extracted and written to `design-tokens/app.override.css`,
+execute **STEP 9** from `wm-projectconversion/SKILL.md`:
+
+**STEP 9:** Delete the legacy themes folder
+```bash
+rm -rf "<TARGET_DIR>/src/main/webapp/themes"
+```
+
+This is now safe because:
+- All tokens have been extracted in PHASE 3
+- design-tokens/app.override.css has been populated with the tokens
+- The legacy themes folder is no longer needed
+
+---
+
+## PHASE 5 — ZIP Creation (always runs)
 
 Output ZIP is always named `<SOURCE_ZIP_BASENAME>_conv_ds.zip` and placed in the same
 directory as the source ZIP (or `TARGET_DIR`'s parent). Files are zipped from inside
@@ -338,7 +364,7 @@ Capture `ZIP_SIZE` via `ls -lh "../<SOURCE_ZIP_BASENAME>_conv_ds.zip"`.
 
 ---
 
-## STEP 4 · Unified summary
+## STEP 5 · Unified summary
 
 ```
 Migration complete!

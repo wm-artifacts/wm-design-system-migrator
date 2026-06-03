@@ -643,6 +643,25 @@ Save nothing; this step is read-only.
 
 ---
 
+### STEP 8.5 · Extract theme tokens (BEFORE deleting themes folder)
+
+**CRITICAL: This step MUST run BEFORE STEP 9 to preserve access to theme source files.**
+
+If `RUN_THEME = true` (theme token migration enabled):
+
+1. **Read theme files** from `<TARGET_DIR>/src/main/webapp/themes/<THEME_NAME>/style.css`
+2. **Extract tokens** (typography, colors, spacing) using the wm-theme-to-designsystem-conversion skill logic
+3. **Build app.override.css** with mapped design tokens
+4. **Create design-tokens/ folder** (empty, will be populated in STEP 9)
+5. **Write extracted tokens** to `<TARGET_DIR>/src/main/webapp/design-tokens/app.override.css`
+
+**Important:**
+- Do NOT delete themes/ folder yet — it's needed for token extraction
+- Create design-tokens folder only as a destination for the extracted tokens
+- The actual themes/ folder deletion happens in STEP 9
+
+---
+
 ### STEP 9 · Replace `themes/` with `design-tokens/`
 
 **WEB projects** — Studio generates `design-tokens/app.override.css` on first
