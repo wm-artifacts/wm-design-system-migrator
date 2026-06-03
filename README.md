@@ -47,7 +47,7 @@ The skill prompts for these at runtime and lets you override them — paste valu
 |---|---|
 | `/wm-migrate-to-designsystemproject` | **Full Design System migration** — pom.xml, properties, index.html, variables, layouts, NPM scope, migration history. Produces a ZIP. |
 | `/wm-autolayout-conv` | **Layout modernisation** — converts grid (`wm-layoutgrid / wm-gridrow / wm-gridcolumn`) and linear (`wm-linearlayout / wm-linearlayoutitem`) markup to `wm-container` flex layout. Dry-run mode available. |
-| `/wm-projectconversion` | **Design System conversion** — pom.xml, properties, index.html, variables, NPM scope, migration history. Produces a ZIP. |
+| `/wm-projectconversion` | **Project conversion** — pom.xml, properties, index.html, variables, NPM scope, migration history. Produces a ZIP. |
 
 ---
 
@@ -120,7 +120,7 @@ The skill prompts for these at runtime and lets you override them — paste valu
 ## Invocation examples
 
 ```bash
-# Basic Design System conversion (accepts folder or .zip)
+# Basic project conversion (accepts folder or .zip)
 /wm-migrate-to-designsystemproject /path/to/MyApp
 
 # Convert + output to a different folder
@@ -132,7 +132,7 @@ The skill prompts for these at runtime and lets you override them — paste valu
 # Layout modernisation only (dry run to preview)
 /wm-autolayout-conv /path/to/MyApp --dry-run
 
-# Full pipeline: Design System + layout modernisation + ZIP
+# Full pipeline: Project conversion + Layout conversion + Packaging
 /wm-migrate-to-designsystemproject /path/to/MyApp
 
 # Full pipeline, skip layout conversion
