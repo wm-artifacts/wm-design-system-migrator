@@ -21,7 +21,7 @@ Full pipeline to convert a WaveMaker DEFAULT-template project to DesignSystem,
 and produce a Studio-importable ZIP.
 
 Sub-skills this orchestrates:
-- **wm-projectconversion** — DesignSystem conversion (pom.xml, .wmproject.properties,
+- **wm-projectconversion** — Project conversion (pom.xml, .wmproject.properties,
   index.html, variables, page layouts, themes → design-tokens, npm scope,
   migration_info)
 - **wm-autolayout-conv** — Grid & LinearLayout → flex container conversion
@@ -53,7 +53,7 @@ full pipeline in one shot.
 | `<project_path>` | Yes | Absolute path to the WaveMaker project |
 | `-o <output_path>` | No | Write converted project here; source stays untouched |
 | `--project-name <name>` | No | Rename project (updates artifactId, displayName, etc.) |
-| `--skip-designsystem` | No | Skip DesignSystem conversion; only run autolayout + theme + ZIP |
+| `--skip-designsystem` | No | Skip Project conversion; only run autolayout + theme + ZIP |
 | `--skip-autolayout` | No | Skip autolayout conversion; only run DesignSystem + theme + ZIP |
 | `--skip-theme` | No | Skip theme conversion; only run DesignSystem + autolayout + ZIP |
 | `--responsive` | No | Inject mobile media-query CSS when converting autolayout |
@@ -100,10 +100,10 @@ Show the detected plan before doing anything:
 ```
 Migration plan for: <SOURCE_DIR>
 
-  Phase 1 — DesignSystem conversion:    [ENABLED | SKIPPED (--skip-designsystem)]
-  Phase 2 — AutoLayout conversion:      [ENABLED | SKIPPED (--skip-autolayout)]
-  Phase 3 — Theme token migration:      [ENABLED | SKIPPED (--skip-theme)]
-  Phase 4 — ZIP creation:               ALWAYS
+  Phase 1 — Project conversion:    [ENABLED | SKIPPED (--skip-designsystem)]
+  Phase 2 — Layout conversion:      [ENABLED | SKIPPED (--skip-autolayout)]
+  Phase 3 — Theme to DesignSystem conversion:      [ENABLED | SKIPPED (--skip-theme)]
+  Phase 4 — Packaging:               ALWAYS
 
 Proceed? [Y/n]
 ```
@@ -177,7 +177,7 @@ Scan `<SOURCE_DIR>/src/main/webapp/pages/**/*.html` for `wm-layoutgrid` **and** 
 If `PAGE_FILTER` is set, restrict to matching folder names.
 
 ```
-AutoLayout scope (Phase 2):
+Layout scope (Phase 2):
   Page              layoutgrids   gridrows   gridcolumns   linearlayouts   linearlayoutitems
   ──────────────    ───────────   ────────   ───────────   ─────────────   ─────────────────
   <page>               N             N           N               N                 N
@@ -217,7 +217,7 @@ All remaining steps operate on `TARGET_DIR`.
 
 ---
 
-## PHASE 1 — DesignSystem Conversion (skip entirely if RUN_DESIGNSYSTEM = false)
+## PHASE 1 — Project Conversion (skip entirely if RUN_DESIGNSYSTEM = false)
 
 Use the **Read** tool to load `../wm-projectconversion/SKILL.md` (sibling skill folder).
 **Do NOT use the Skill tool** — read the file directly and execute its steps inline.
@@ -252,7 +252,7 @@ proceeding to the next step.
 
 ---
 
-## PHASE 2 — AutoLayout Conversion (skip entirely if RUN_AUTOLAYOUT = false)
+## PHASE 2 — Layout Conversion (skip entirely if RUN_AUTOLAYOUT = false)
 
 Use the **Read** tool to load `../wm-autolayout/SKILL.md` (sibling skill folder).
 **Do NOT use the Skill tool** — read the file directly and execute its steps inline.
@@ -282,7 +282,7 @@ output to build the per-page counts for the unified summary.
 
 ---
 
-## PHASE 3 — Theme Token Migration (skip entirely if RUN_THEME = false)
+## PHASE 3 — Theme to DesignSystem Conversion (skip entirely if RUN_THEME = false)
 
 Use the **Read** tool to load `../wm-theme-to-designsystem-conversion/SKILL.md` (sibling skill folder).
 **Do NOT use the Skill tool** — read the file directly and execute its steps inline.
@@ -321,7 +321,7 @@ Capture the token extraction summary and store for the unified STEP 4 report:
 
 ---
 
-## PHASE 4 — ZIP Creation (always runs)
+## PHASE 4 — Packaging (always runs)
 
 Output ZIP is always named `<SOURCE_ZIP_BASENAME>_conv_ds.zip` and placed in the same
 directory as the source ZIP (or `TARGET_DIR`'s parent). Files are zipped from inside
@@ -348,7 +348,7 @@ Platform:  <WEB or MOBILE>
 ZIP:       <ZIP_PATH>  (<ZIP_SIZE>)
 
 ════════════════════════════════════════════════════════
-PHASE 1 — DesignSystem Conversion        [COMPLETE | SKIPPED]
+PHASE 1 — Project Conversion        [COMPLETE | SKIPPED]
 ════════════════════════════════════════════════════════
 Versions applied:
   Parent POM:       <PARENT_VERSION>
@@ -370,7 +370,7 @@ Prefabs (passthrough — no conversion required):
   • <prefab>   used in: <pages>   ← omit section if no prefabs
 
 ════════════════════════════════════════════════════════
-PHASE 2 — AutoLayout Conversion   [COMPLETE | SKIPPED]
+PHASE 2 — Layout Conversion   [COMPLETE | SKIPPED]
 ════════════════════════════════════════════════════════
   Page              layoutgrids   gridrows   gridcolumns   linearlayouts   linearlayoutitems
   ──────────────    ───────────   ────────   ───────────   ─────────────   ─────────────────
@@ -383,7 +383,7 @@ PHASE 2 — AutoLayout Conversion   [COMPLETE | SKIPPED]
   [--responsive: mobile breakpoint CSS injected into each page's .css]
 
 ════════════════════════════════════════════════════════
-PHASE 3 — Theme Token Migration   [COMPLETE | SKIPPED]
+PHASE 3 — Theme to DesignSystem Conversion   [COMPLETE | SKIPPED]
 ════════════════════════════════════════════════════════
 Theme:     <THEME_NAME>
 Source:    src/main/webapp/theme/<THEME_NAME>/style.css
@@ -432,7 +432,7 @@ Known harmless Studio log lines:
 
 ## Quick reference — what each phase does
 
-### Phase 1 (wm-projectconversion) → Phase 2 (wm-autolayout-conv) → Phase 3 (wm-theme-to-designsystem-conversion) → Phase 4 (ZIP)
+### Phase 1 (wm-projectconversion) → Phase 2 (wm-autolayout-conv) → Phase 3 (wm-theme-to-designsystem-conversion) → Phase 4 (Packaging)
 
 | File | Change |
 |---|---|

@@ -822,7 +822,7 @@ Otherwise, write the template content to `<TARGET_DIR>/migration_info.md`.
 ### STEP 13b · Generate the importable ZIP (standalone only)
 
 > **Skip this step when invoked from `wm-migrate-to-designsystemproject`** — the parent orchestrator
-> handles ZIP creation in its own PHASE 3. Only execute when running `wm-projectconversion`
+> handles Packaging in its own PHASE 4. Only execute when running `wm-projectconversion`
 > directly.
 
 **This step is always run when standalone.** The whole point of the skill is to produce a zip

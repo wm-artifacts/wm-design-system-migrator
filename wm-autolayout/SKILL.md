@@ -473,7 +473,7 @@ rm -f "<PROJECT_DIR>/wm_grid_conv_tmp.py"
 ### STEP 3b · Generate the importable ZIP (standalone only)
 
 > **Skip this step when invoked from `wm-migrate-to-designsystemproject`** — the parent orchestrator
-> handles ZIP creation in its own PHASE 3. Only execute when running `wm-autolayout-conv`
+> handles Packaging in its own PHASE 4. Only execute when running `wm-autolayout-conv`
 > directly.
 
 If `DRY_RUN` is `true`, skip this step entirely (dry-run never writes files or produces a ZIP).
