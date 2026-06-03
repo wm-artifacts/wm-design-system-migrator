@@ -12,7 +12,7 @@ description: Use this skill to convert a WaveMaker DEFAULT-template project (WEB
   upgrade an existing non-DesignSystem WaveMaker project to DesignSystem only. Do not use this skill to
   convert grid or linear layout widgets to flex containers (use wm-component-conversion for
   that), or when the user wants the full migration pipeline in one shot (use
-  wm-migrate-to-designsystemproject instead).
+  wm-design-system-migrator instead).
 metadata:
   version: 0.1.0
 ---
@@ -840,7 +840,7 @@ Otherwise, write the template content to `<TARGET_DIR>/migration_info.md`.
 
 ### STEP 13b · Generate the importable ZIP (standalone only)
 
-> **Skip this step when invoked from `wm-migrate-to-designsystemproject`** — the parent orchestrator
+> **Skip this step when invoked from `wm-design-system-migrator`** — the parent orchestrator
 > handles Packaging in its own PHASE 4. Only execute when running `wm-projectconversion`
 > directly.
 

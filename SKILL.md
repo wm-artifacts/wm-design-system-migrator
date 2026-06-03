@@ -1,5 +1,5 @@
 ---
-name: wm-migrate-to-designsystemproject
+name: wm-design-system-migrator
 description: Use this skill to run the complete WaveMaker project migration pipeline in
   one shot. It orchestrates wm-projectconversion (DEFAULT → DesignSystem format conversion), 
   wm-component-conversion (wm-layoutgrid / wm-gridrow / wm-gridcolumn + wm-linearlayout /
@@ -14,7 +14,7 @@ metadata:
   version: 0.1.0
 ---
 
-# /wm-migrate-to-designsystemproject — WaveMaker Full Migration Orchestrator
+# /wm-design-system-migrator — WaveMaker Full Migration Orchestrator
 
 Full pipeline to convert a WaveMaker DEFAULT-template project to DesignSystem,
 (optionally) convert grid layouts to flex containers, migrate legacy theme tokens,
@@ -37,15 +37,15 @@ full pipeline in one shot.
 ## Invocation
 
 ```
-/wm-migrate-to-designsystemproject <project_path>
-/wm-migrate-to-designsystemproject <project_path> -o <output_path>
-/wm-migrate-to-designsystemproject <project_path> --project-name <name>
-/wm-migrate-to-designsystemproject <project_path> --skip-autolayout
-/wm-migrate-to-designsystemproject <project_path> --skip-designsystem
-/wm-migrate-to-designsystemproject <project_path> --skip-theme
-/wm-migrate-to-designsystemproject <project_path> --responsive
-/wm-migrate-to-designsystemproject <project_path> --pages <Page1,Page2>
-/wm-migrate-to-designsystemproject <project_path> --theme <theme_name>
+/wm-design-system-migrator <project_path>
+/wm-design-system-migrator <project_path> -o <output_path>
+/wm-design-system-migrator <project_path> --project-name <name>
+/wm-design-system-migrator <project_path> --skip-autolayout
+/wm-design-system-migrator <project_path> --skip-designsystem
+/wm-design-system-migrator <project_path> --skip-theme
+/wm-design-system-migrator <project_path> --responsive
+/wm-design-system-migrator <project_path> --pages <Page1,Page2>
+/wm-design-system-migrator <project_path> --theme <theme_name>
 ```
 
 | Argument | Required | Description |

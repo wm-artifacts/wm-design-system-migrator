@@ -11,7 +11,7 @@ description: Use this skill to convert legacy WaveMaker grid layout widgets
   layout widgets in a WaveMaker project independently of a DesignSystem conversion — for example,
   on an already-DesignSystem project or as a standalone cleanup step. Do not use this skill for
   full DesignSystem template migration (use wm-projectconversion), or when the user wants the complete
-  migration pipeline in one shot (use wm-migrate-to-designsystemproject instead).
+  migration pipeline in one shot (use wm-design-system-migrator instead).
 metadata:
   version: 0.1.0
 ---
@@ -472,7 +472,7 @@ rm -f "<PROJECT_DIR>/wm_grid_conv_tmp.py"
 
 ### STEP 3b · Generate the importable ZIP (standalone only)
 
-> **Skip this step when invoked from `wm-migrate-to-designsystemproject`** — the parent orchestrator
+> **Skip this step when invoked from `wm-design-system-migrator`** — the parent orchestrator
 > handles Packaging in its own PHASE 4. Only execute when running `wm-component-conversion`
 > directly.
 
@@ -516,7 +516,7 @@ Pass `ZIP_PATH` and `ZIP_SIZE` into the STEP 4 summary.
 Grid & LinearLayout → Container Conversion — [DRY RUN: no files written | COMPLETE]
 
 Project: <PROJECT_DIR>
-ZIP:     <ZIP_PATH>  (<ZIP_SIZE>)    ← omit this line when run from wm-migrate-to-designsystemproject or when DRY_RUN
+ZIP:     <ZIP_PATH>  (<ZIP_SIZE>)    ← omit this line when run from wm-design-system-migrator or when DRY_RUN
 
 Pages converted:
   ✓ Main          — 1 layoutgrid, 2 gridrow, 4 gridcolumn, 0 linearlayout, 0 linearlayoutitem, 3 collapsed
@@ -543,7 +543,7 @@ Responsive layout:
   [--responsive: mobile breakpoint CSS appended to each page's .css file]
 
 Next steps:
-  1. Import <ZIP_PATH> into WaveMaker Studio    ← standalone only; omit when run from wm-migrate-to-designsystemproject
+  1. Import <ZIP_PATH> into WaveMaker Studio    ← standalone only; omit when run from wm-design-system-migrator
      (or: Open the project in WaveMaker Studio and preview each converted page)
   2. Adjust gap / padding / alignment on wm-containers if needed
   3. Use Studio's flex properties panel to fine-tune individual containers

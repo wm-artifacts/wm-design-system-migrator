@@ -18,13 +18,13 @@ Install the skill globally via npm for it to be available to AI Agents:
 npx skills add wm-artifacts/wm-design-system-migrator
 ```
 
-Add specific skills or all when prompted. `/wm-migrate-to-designsystemproject` is the main pipeline — the other skills must be present for it to work.
+Add specific skills or all when prompted. `/wm-design-system-migrator` is the main pipeline — the other skills must be present for it to work.
 
 ---
 
 ## Prerequisites
 
-- Claude Code CLI
+- AI agent which supports SKILL.
 - Python 3.9+ on PATH (used internally; macOS ships with this)
 
 ---
@@ -45,7 +45,7 @@ The skill prompts for these at runtime and lets you override them — paste valu
 
 | Command | Purpose |
 |---|---|
-| `/wm-migrate-to-designsystemproject` | **Full Design System migration** — pom.xml, properties, index.html, variables, layouts, theme tokens, NPM scope, migration history. Produces a ZIP. |
+| `/wm-design-system-migrator` | **Full Design System migration** — pom.xml, properties, index.html, variables, layouts, theme tokens, NPM scope, migration history. Produces a ZIP. |
 | `/wm-component-conversion` | **Layout modernisation** — converts grid (`wm-layoutgrid / wm-gridrow / wm-gridcolumn`) and linear (`wm-linearlayout / wm-linearlayoutitem`) markup to `wm-container` flex layout. Dry-run mode available. |
 | `/wm-projectconversion` | **Project conversion** — pom.xml, properties, index.html, variables, NPM scope, migration history. Produces a ZIP. |
 | `/wm-theme-to-designsystem-conversion` | **Theme token migration** — extracts legacy theme CSS variables and CSS property values from `style.css` into Design System global tokens (color, spacing, typography) with `--wm-*` semantic naming. Writes to `design-tokens/app.override.css`. Handles deduplication, variable reference mapping, and font family customization. |
@@ -54,7 +54,7 @@ The skill prompts for these at runtime and lets you override them — paste valu
 
 ## What Gets Converted
 
-### `/wm-migrate-to-designsystemproject`
+### `/wm-design-system-migrator`
 
 | File / Area | What changes |
 |---|---|
@@ -187,7 +187,7 @@ Writes to `src/main/webapp/design-tokens/app.override.css`:
 
 ### Execution in Full Pipeline
 
-When invoked via `/wm-migrate-to-designsystemproject`, theme token migration happens **AFTER** design system conversion but **BEFORE** theme folder deletion:
+When invoked via `/wm-design-system-migrator`, theme token migration happens **AFTER** design system conversion but **BEFORE** theme folder deletion:
 
 1. **PHASE 1** — DesignSystem conversion
 2. **PHASE 3** — Theme token extraction (reads `themes/` folder)
@@ -232,25 +232,25 @@ This execution order ensures no data loss and proper token capture before cleanu
 
 ```bash
 # Basic project conversion (accepts folder or .zip)
-/wm-migrate-to-designsystemproject /path/to/MyApp
+/wm-design-system-migrator /path/to/MyApp
 
 # Convert + output to a different folder
-/wm-migrate-to-designsystemproject /path/to/MyApp.zip -o /path/to/MyApp_DesignSystem
+/wm-design-system-migrator /path/to/MyApp.zip -o /path/to/MyApp_DesignSystem
 
 # Rename project during conversion
-/wm-migrate-to-designsystemproject /path/to/MyApp --project-name FinancePortal
+/wm-design-system-migrator /path/to/MyApp --project-name FinancePortal
 
 # Layout modernisation only (dry run to preview)
 /wm-component-conversion /path/to/MyApp --dry-run
 
 # Full pipeline: Project conversion + Layout conversion + Packaging
-/wm-migrate-to-designsystemproject /path/to/MyApp
+/wm-design-system-migrator /path/to/MyApp
 
 # Full pipeline, skip layout conversion
-/wm-migrate-to-designsystemproject /path/to/MyApp --skip-autolayout
+/wm-design-system-migrator /path/to/MyApp --skip-autolayout
 
 # Full pipeline with responsive CSS injected into page stylesheets
-/wm-migrate-to-designsystemproject /path/to/MyApp --responsive
+/wm-design-system-migrator /path/to/MyApp --responsive
 ```
 
 ---
