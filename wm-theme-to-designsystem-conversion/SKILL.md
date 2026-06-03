@@ -47,10 +47,10 @@ If either `PROJECT_DIR` or `THEME_NAME` is missing, ask: *"Please provide the pr
 ### STEP 1 · Validate project and theme
 
 Check:
-1. `<PROJECT_DIR>/src/main/webapp/theme/<THEME_NAME>/` exists
-   - If missing → abort: *"Theme directory not found: `<PROJECT_DIR>/src/main/webapp/theme/<THEME_NAME>/`"*
+1. `<PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/` exists
+   - If missing → abort: *"Theme directory not found: `<PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/`"*
 
-2. `<PROJECT_DIR>/src/main/webapp/theme/<THEME_NAME>/style.css` exists
+2. `<PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/style.css` exists
    - If missing → abort: *"No style.css found in theme folder."*
 
 3. `<PROJECT_DIR>/src/main/webapp/` exists (for output path validation)
@@ -58,16 +58,16 @@ Check:
 
 ---
 
-### STEP 2 · Read foundation.css and legacy style.css
+### STEP 2 · Read foundation.css (reference) and legacy style.css
 
-**Foundation CSS location:** `<PROJECT_DIR>/src/main/webapp/theme/<THEME_NAME>/foundation.css`
-(This is the base design token file with `:root { --wm-*: ... }` variables)
+**Foundation CSS location (reference file):** `../assets/foundation.css`
+(This is the standard design system base token file with `:root { --wm-*: ... }` variables.
+It's bundled with the wm-theme-conv skill as a reference for token mapping, NOT from the project.)
 
-**Legacy CSS location:** `<PROJECT_DIR>/src/main/webapp/theme/<THEME_NAME>/style.css`
+**Legacy CSS location (from project):** `<PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/style.css`
 
-If foundation.css is missing, log a warning but continue (assume default foundation).
-
-Read both files as text.
+Read both files as text. Foundation.css is used as a reference to identify semantic token names
+and match legacy theme tokens against foundation tokens for intelligent override mapping.
 
 ---
 
@@ -127,21 +127,26 @@ Do you want to use this font family in the design system?
 
 ---
 
-### STEP 4 · Match against foundation tokens
+### STEP 4 · Match against foundation tokens (reference)
 
-For each extracted token, check if a corresponding foundation variable exists:
+For each extracted token from style.css, check if a corresponding foundation variable exists
+in the reference foundation.css:
+
 - **Match rule**: If foundation has a token with a "similar" semantic purpose (e.g., both are primary colors, both are heading fonts), flag it as "overrides foundation"
 - **No match**: Flag as "new custom token"
+
+Foundation.css is the **reference standard** bundled with the migration tool. It defines the semantic
+token names that all DesignSystem projects use. Legacy theme tokens are mapped to these names.
 
 Example:
 ```
 --my-primary-color: #FF7250
-  ↓ (matches purpose of)
-  foundation: --wm-color-primary: #FF7250  ← same token, can override
+  ↓ (matches semantic purpose in reference foundation.css)
+  foundation: --wm-color-primary: #FF7250  ← map to this foundation name
   
 --custom-accent: #E91E63
-  ↓ (no foundation match)
-  custom-only: new token (no override)
+  ↓ (no foundation match in reference)
+  custom-only: new token (keep original name)
 ```
 
 ---
@@ -171,7 +176,7 @@ The output file structure:
 /**
  * Design Token Overrides — Migrated from legacy theme
  * Theme: <THEME_NAME>
- * Source: <PROJECT_DIR>/src/main/webapp/theme/<THEME_NAME>/style.css
+ * Source: <PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/style.css
  * 
  * These tokens override foundation.css values.
  * Foundation tokens are defined in src/main/webapp/theme/<THEME_NAME>/foundation.css
@@ -219,6 +224,38 @@ The output file structure:
 
 5. Sort tokens alphabetically within each category.
 
+6. **CRITICAL: Update variable references** — When a token value references another CSS variable (e.g., `var(--brand-primary)`), **always update the reference to point to the new mapped token name**:
+   ```css
+   /* WRONG - references old token name: */
+   --wm-header-active-text-color: var(--brand-primary);
+   
+   /* CORRECT - references mapped token name: */
+   --wm-header-active-text-color: var(--wm-color-primary);
+   ```
+   This ensures all references resolve to the new DesignSystem naming scheme and eliminates dead reference chains.
+
+7. **CRITICAL: Eliminate duplicate tokens** — Do NOT emit the same token name twice. When processing style.css:
+   - Track all emitted token names as you build the output
+   - If a token name already appears in the output, skip it (keep the first occurrence)
+   - Report duplicates found to the user for awareness
+   ```css
+   /* WRONG - duplicates: */
+   --wm-color-primary: #2294ef;
+   --wm-color-primary: color-mix(in srgb, var(--brand-primary), var(--light-mixer) 9%);
+   
+   /* CORRECT - keep only one: */
+   --wm-color-primary: #2294ef;  /* from --brand-primary */
+   ```
+
+8. **CRITICAL: Use mapped references for dependent tokens** — For tokens whose values depend on other tokens, use the mapped destination name:
+   ```css
+   /* WRONG - references original token before mapping: */
+   --wm-btn-primary-hover: color-mix(in srgb, var(--brand-primary), var(--light-mixer) 9%);
+   
+   /* CORRECT - uses mapped token for clarity: */
+   --wm-btn-primary-hover: color-mix(in srgb, var(--wm-color-primary), var(--wm-light-mixer) 9%);
+   ```
+
 ---
 
 ### STEP 6 · Create design-tokens folder if needed
@@ -242,7 +279,7 @@ Theme Token Extraction — [DRY RUN: no files written | COMPLETE]
 
 Project:     <PROJECT_DIR>
 Theme:       <THEME_NAME>
-Source:      <PROJECT_DIR>/src/main/webapp/theme/<THEME_NAME>/style.css
+Source:      <PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/style.css
 Output:      <PROJECT_DIR>/src/main/webapp/design-tokens/app.override.css
 
 Extracted Tokens:
@@ -259,10 +296,14 @@ Extracted Tokens:
     • gap, margin, padding, space, size, etc.
     • Examples: --my-gap (8px), --my-margin (16px), ...
 
-Token Mapping:
+Token Mapping (against reference foundation.css):
   • M foundation overrides (e.g., --wm-color-primary, --wm-font-family-brand)
   • N custom tokens (no foundation match, kept as-is)
   • Total: M + N variables
+  
+Reference Used:
+  • Foundation: wm-theme-conv/assets/foundation.css (standard design system tokens)
+  • Legacy theme: <PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/style.css
 
 Font Configuration:
   [if user approved custom font]
@@ -411,7 +452,7 @@ Do you want to use this font family in the design system?
  * Source: /path/to/project/src/main/webapp/theme/default/style.css
  * 
  * These tokens override foundation.css values.
- * Foundation tokens are defined in src/main/webapp/theme/default/foundation.css
+ * Foundation reference: wm-theme-conv/assets/foundation.css (standard design system tokens)
  */
 
 /* Font imports */
@@ -439,8 +480,9 @@ Do you want to use this font family in the design system?
 
 ## Notes
 
+- **Foundation reference file**: `../assets/foundation.css` is bundled with the wm-theme-conv skill and defines the standard design system token names. It is NOT read from the project directory — it's a reference for intelligent token mapping.
 - **Semantic mapping**: The converter tries to infer semantic meaning from variable names (e.g., `--my-primary` → `--wm-color-primary`). For ambiguous names, tokens are treated as custom (kept as-is).
-- **Foundation reference**: If a token value in style.css **already uses a foundation variable** (e.g., `--my-gap: var(--wm-gap-base)`), it is skipped (no override needed).
+- **Foundation reference matching**: If a token value in style.css **already uses a foundation variable** (e.g., `--my-gap: var(--wm-gap-base)`), it is skipped (no override needed).
 - **Font family handling**:
   - **Google Fonts** (e.g., `'Roboto', sans-serif`): Auto-detect and import from `https://fonts.googleapis.com/css2`
   - **Web fonts** (e.g., URLs): Use as-is or wrap in `@font-face` if needed
