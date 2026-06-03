@@ -156,16 +156,12 @@ def merge_class(existing, new_cls):
     return ' '.join(parts)
 
 def get_alignment(attrs):
-    """Map verticalalign + horizontalalign to a single alignment value."""
-    v_map = {'top': 'top', 'center': 'center', 'bottom': 'bottom'}
+    """Map horizontalalign to alignment value with middle as default vertical."""
     h_map = {'left': 'left', 'center': 'center', 'right': 'right'}
-    has_v = 'verticalalign' in attrs
-    has_h = 'horizontalalign' in attrs
-    if not has_v and not has_h:
+    if 'horizontalalign' not in attrs:
         return None
-    v = v_map.get(attrs.get('verticalalign', 'top'), 'top')
     h = h_map.get(attrs.get('horizontalalign', 'left'), 'left')
-    return f'{v}-{h}'
+    return f'middle-{h}'
 
 # ── per-element converters ───────────────────────────────────────────────────
 
@@ -206,10 +202,14 @@ def conv_gridcolumn(attr_str):
     d = {}
     if s.get('name'):
         d['name'] = s['name']
-    d['direction'] = 'column'
+    d['direction'] = 'row'
+    d['wrap']      = 'true'
     d['width']     = width
     d['class']     = merge_class(s.get('class', ''), 'app-container-default')
     d['variant']   = 'default'
+    alignment = get_alignment(s)
+    if alignment:
+        d['alignment'] = alignment
     d['data-wm-conv'] = '1'
     return build_attrs(d)
 
@@ -585,19 +585,20 @@ Same rules as `wm-layoutgrid` above.
 
 ---
 
-### `wm-gridcolumn` → flex column container
+### `wm-gridcolumn` → flex row container
 
 ```html
 <!-- BEFORE -->
-<wm-gridcolumn columnwidth="6" name="gridcolumn1">...</wm-gridcolumn>
+<wm-gridcolumn columnwidth="6" name="gridcolumn1" horizontalalign="center">...</wm-gridcolumn>
 
 <!-- AFTER -->
-<wm-container name="gridcolumn1" direction="column" width="50%"
-    class="app-container-default" variant="default">...</wm-container>
+<wm-container name="gridcolumn1" direction="row" wrap="true" width="50%"
+    class="app-container-default" variant="default" alignment="middle-center">...</wm-container>
 ```
 
 - `columnwidth` → `width` via the Bootstrap 12-col table below; attribute is removed
-- Fixed: `direction="column"` `variant="default"`
+- `horizontalalign` → `alignment` as `"middle-{horizontal}"` (left/center/right); omitted if absent
+- Fixed: `direction="row"` `wrap="true"` `variant="default"`
 
 ---
 
@@ -607,13 +608,13 @@ Direction is taken directly from the `direction` attribute of the source element
 
 ```html
 <!-- BEFORE -->
-<wm-linearlayout direction="row" spacing="12" name="linearlayout1" verticalalign="center">
+<wm-linearlayout direction="row" spacing="12" name="linearlayout1" horizontalalign="center">
   ...
 </wm-linearlayout>
 
 <!-- AFTER -->
 <wm-container name="linearlayout1" direction="row" wrap="true" width="fill"
-    class="app-container-default" variant="default" gap="12" alignment="center-left">
+    class="app-container-default" variant="default" gap="12" alignment="middle-center">
   ...
 </wm-container>
 ```
@@ -625,22 +626,20 @@ Attribute mapping:
 | `name` | `name` | kept as-is |
 | `direction` | `direction` | copied; default `"column"` if absent |
 | `spacing` | `gap` | copied; omitted if absent |
-| `verticalalign` + `horizontalalign` | `alignment` | `"{v}-{h}"` — see table below; omitted if neither present |
+| `horizontalalign` | `alignment` | `"middle-{horizontal}"` where horizontal is left/center/right; omitted if absent |
 | `class` | `class` | merged with `app-container-default` |
 | — | `wrap="true"` | always added |
 | — | `width="fill"` | always added |
 | — | `variant="default"` | always added |
 
-**Alignment mapping** (`verticalalign` → vertical part, `horizontalalign` → horizontal part):
+**Alignment mapping** (`horizontalalign` → horizontal part, vertical part is always `middle`):
 
-| `verticalalign` | vertical | `horizontalalign` | horizontal |
-|:---:|:---:|:---:|:---:|
-| `top` | `top` | `left` | `left` |
-| `center` | `center` | `center` | `center` |
-| `bottom` | `bottom` | `right` | `right` |
-| _(absent)_ | `top` | _(absent)_ | `left` |
-
-Result format: `alignment="{vertical}-{horizontal}"`. If neither `verticalalign` nor `horizontalalign` is present, the `alignment` attribute is omitted entirely.
+| `horizontalalign` | alignment value |
+|:---:|:---:|
+| `left` | `middle-left` |
+| `center` | `middle-center` |
+| `right` | `middle-right` |
+| _(absent)_ | _(omitted)_ |
 
 ---
 
@@ -652,13 +651,13 @@ Result format: `alignment="{vertical}-{horizontal}"`. If neither `verticalalign`
 
 ```html
 <!-- BEFORE — inside a direction="row" linearlayout -->
-<wm-linearlayoutitem name="linearlayoutitem1" flexgrow="6" padding="unset unset 160px unset">
+<wm-linearlayoutitem name="linearlayoutitem1" flexgrow="6" padding="unset unset 160px unset" horizontalalign="center">
   <wm-container name="container7">...</wm-container>
 </wm-linearlayoutitem>
 
 <!-- AFTER -->
 <wm-container name="linearlayoutitem1" direction="column" width="50%"
-    class="app-container-default" variant="default" padding="unset unset 160px unset">
+    class="app-container-default" variant="default" padding="unset unset 160px unset" alignment="middle-center">
   <wm-container name="container7">...</wm-container>
 </wm-container>
 ```
@@ -671,7 +670,7 @@ Attribute mapping:
 | — | `direction` | perpendicular to parent (see rule above) |
 | `flexgrow` | `width` | converted via flexgrow table below |
 | `padding` | `padding` | kept as-is if present |
-| `verticalalign` + `horizontalalign` | `alignment` | same rule as linearlayout |
+| `horizontalalign` | `alignment` | `"middle-{horizontal}"` where horizontal is left/center/right; omitted if absent |
 | `class` | `class` | merged with `app-container-default` |
 | — | `variant="default"` | always added |
 
@@ -698,15 +697,15 @@ When `columnwidth` or `flexgrow` is absent → defaults to `fill`.
 
 Input:
 ```html
-<wm-linearlayout direction="row" spacing="12" name="linearlayout1" verticalalign="center">
+<wm-linearlayout direction="row" spacing="12" name="linearlayout1" horizontalalign="left">
     <wm-linearlayoutitem name="linearlayoutitem1" flexgrow="6" padding="unset unset 160px unset">
-        <wm-container name="container7" horizontalalign="left">
+        <wm-container name="container7">
             <wm-label name="label1" class="h1" caption="One-Stop Shop for All"></wm-label>
             <wm-label class="h1" caption="Your Mobile Needs" name="label5"></wm-label>
         </wm-container>
     </wm-linearlayoutitem>
-    <wm-linearlayoutitem flexgrow="6" name="linearlayoutitem2">
-        <wm-container name="container8" horizontalalign="center">
+    <wm-linearlayoutitem flexgrow="6" name="linearlayoutitem2" horizontalalign="center">
+        <wm-container name="container8">
             <wm-picture name="picture1" picturesource="resources/images/landing.png"></wm-picture>
         </wm-container>
     </wm-linearlayoutitem>
@@ -716,17 +715,17 @@ Input:
 Output:
 ```html
 <wm-container name="linearlayout1" direction="row" wrap="true" width="fill"
-    class="app-container-default" variant="default" gap="12" alignment="center-left">
+    class="app-container-default" variant="default" gap="12" alignment="middle-left">
     <wm-container name="linearlayoutitem1" direction="column" width="50%"
         class="app-container-default" variant="default" padding="unset unset 160px unset">
-        <wm-container name="container7" horizontalalign="left">
+        <wm-container name="container7">
             <wm-label name="label1" class="h1" caption="One-Stop Shop for All"></wm-label>
             <wm-label class="h1" caption="Your Mobile Needs" name="label5"></wm-label>
         </wm-container>
     </wm-container>
     <wm-container name="linearlayoutitem2" direction="column" width="50%"
-        class="app-container-default" variant="default">
-        <wm-container name="container8" horizontalalign="center">
+        class="app-container-default" variant="default" alignment="middle-center">
+        <wm-container name="container8">
             <wm-picture name="picture1" picturesource="resources/images/landing.png"></wm-picture>
         </wm-container>
     </wm-container>
@@ -776,15 +775,15 @@ Output:
     class="app-container-default" variant="default" gap="0" columngap="0">
     <wm-container name="gridrow1" direction="row" wrap="true" width="fill"
         class="app-container-default" variant="default" gap="0" columngap="0">
-        <wm-container name="gridcolumn1" direction="column" width="50%"
+        <wm-container name="gridcolumn1" direction="row" wrap="true" width="50%"
             class="app-container-default" variant="default">
             <wm-button caption="Button" name="button1"></wm-button>
         </wm-container>
-        <wm-container name="gridcolumn2" direction="column" width="50%"
+        <wm-container name="gridcolumn2" direction="row" wrap="true" width="50%"
             class="app-container-default" variant="default"></wm-container>
     </wm-container>
 </wm-container>
 ```
 
-On desktop: two equal-width flex columns side by side.
+On desktop: two equal-width flex columns (with row layout inside) side by side.
 On mobile (with `--responsive`): each column stacks to 100% width vertically.

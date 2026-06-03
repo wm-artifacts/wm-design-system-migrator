@@ -1,26 +1,24 @@
 ---
 name: wm-studio-migrate
 description: Use this skill to run the complete WaveMaker project migration pipeline in
-  one shot. It orchestrates wm-designsystem-conv (DEFAULT → DesignSystem format conversion) followed by
+  one shot. It orchestrates wm-designsystem-conv (DEFAULT → DesignSystem format conversion), 
   wm-autolayout-conv (wm-layoutgrid / wm-gridrow / wm-gridcolumn + wm-linearlayout /
-  wm-linearlayoutitem → wm-container), then produces a Studio-importable ZIP. Shows a
-  unified plan before writing any files and prints a combined summary of both phases on
-  completion. Either phase can be skipped individually via --skip-designsystem or
-  --skip-autolayout. Supports project renaming, output path override, page filtering, and
-  responsive CSS injection. Use this skill when the user wants to fully migrate a
-  WaveMaker project from DEFAULT template to DesignSystem with modern flex layouts in a single
-  command. Do not use this skill if the user only wants DesignSystem conversion without touching
-  layouts (use wm-designsystem-conv), or only wants to convert layout widgets on an already-DesignSystem
-  project (use wm-autolayout-conv).
+  wm-linearlayoutitem → wm-container), wm-theme-conv (legacy theme tokens → design-tokens), 
+  then produces a Studio-importable ZIP. Shows a unified plan before writing any files and 
+  prints a combined summary of all phases on completion. Individual phases can be skipped via 
+  --skip-designsystem, --skip-autolayout, or --skip-theme. Supports project renaming, output 
+  path override, page filtering, responsive CSS injection, and custom font selection. Use this 
+  skill when the user wants to fully migrate a WaveMaker project from DEFAULT template to 
+  DesignSystem with modern flex layouts and theme tokens in a single command.
 metadata:
   version: 0.1.0
 ---
 
 # /wm-studio-migrate — WaveMaker Full Migration Orchestrator
 
-Full pipeline to convert a WaveMaker DEFAULT-template project to DesignSystem and
-(optionally) convert grid layouts to flex containers, then produce a Studio-
-importable ZIP.
+Full pipeline to convert a WaveMaker DEFAULT-template project to DesignSystem,
+(optionally) convert grid layouts to flex containers, migrate legacy theme tokens,
+and produce a Studio-importable ZIP.
 
 Sub-skills this orchestrates:
 - **wm-designsystem-conv** — DesignSystem conversion (pom.xml, .wmproject.properties,
@@ -28,6 +26,8 @@ Sub-skills this orchestrates:
   migration_info)
 - **wm-autolayout-conv** — Grid & LinearLayout → flex container conversion
   (wm-layoutgrid / wm-gridrow / wm-gridcolumn + wm-linearlayout / wm-linearlayoutitem → wm-container)
+- **wm-theme-conv** — Legacy theme token extraction and migration
+  (style.css typography/colors/spacing → design-tokens/app.override.css)
 
 Both sub-skills remain independently usable. Use this skill when you want the
 full pipeline in one shot.
@@ -42,8 +42,10 @@ full pipeline in one shot.
 /wm-studio-migrate <project_path> --project-name <name>
 /wm-studio-migrate <project_path> --skip-autolayout
 /wm-studio-migrate <project_path> --skip-designsystem
+/wm-studio-migrate <project_path> --skip-theme
 /wm-studio-migrate <project_path> --responsive
 /wm-studio-migrate <project_path> --pages <Page1,Page2>
+/wm-studio-migrate <project_path> --theme <theme_name>
 ```
 
 | Argument | Required | Description |
@@ -51,10 +53,12 @@ full pipeline in one shot.
 | `<project_path>` | Yes | Absolute path to the WaveMaker project |
 | `-o <output_path>` | No | Write converted project here; source stays untouched |
 | `--project-name <name>` | No | Rename project (updates artifactId, displayName, etc.) |
-| `--skip-designsystem` | No | Skip DesignSystem conversion; only run autolayout + ZIP |
-| `--skip-autolayout` | No | Skip autolayout conversion; only run DesignSystem + ZIP |
+| `--skip-designsystem` | No | Skip DesignSystem conversion; only run autolayout + theme + ZIP |
+| `--skip-autolayout` | No | Skip autolayout conversion; only run DesignSystem + theme + ZIP |
+| `--skip-theme` | No | Skip theme conversion; only run DesignSystem + autolayout + ZIP |
 | `--responsive` | No | Inject mobile media-query CSS when converting autolayout |
 | `--pages <names>` | No | Comma-separated pages to target for autolayout (default: all) |
+| `--theme <name>` | No | Theme folder name to migrate (detected from .wmproject.properties if absent) |
 
 **Natural-language equivalents** (Claude resolves these from the user's prompt):
 
@@ -62,8 +66,10 @@ full pipeline in one shot.
 |---|---|
 | "don't convert layout" / "skip autolayout" / "designsystem only" | `--skip-autolayout` |
 | "don't convert to designsystem" / "layout only" / "skip designsystem" | `--skip-designsystem` |
+| "don't migrate theme" / "skip theme" | `--skip-theme` |
 | "with responsive CSS" / "add mobile breakpoints" | `--responsive` |
 | "only convert Home and Login" | `--pages Home,Login` |
+| "migrate the 'custom' theme" / "use theme 'blue'" | `--theme custom` or `--theme blue` |
 
 ---
 
@@ -82,8 +88,10 @@ Extract from the invocation string (positional args + flags + natural language):
   - **Otherwise** (directory path given): `SOURCE_ZIP_BASENAME` = basename of `SOURCE_DIR`
 - `TARGET_DIR` — value after `-o` (default = `SOURCE_DIR`)
 - `PROJECT_NAME` — value after `--project-name` (optional)
+- `THEME_NAME` — value after `--theme` (optional; will detect from project in STEP 1 if absent)
 - `RUN_DESIGNSYSTEM` — `true` unless `--skip-designsystem` or equivalent intent detected
 - `RUN_AUTOLAYOUT` — `true` unless `--skip-autolayout` or equivalent intent detected
+- `RUN_THEME` — `true` unless `--skip-theme` or equivalent intent detected
 - `ADD_RESPONSIVE` — `true` if `--responsive` or equivalent
 - `PAGE_FILTER` — list after `--pages` (empty = all)
 
@@ -93,8 +101,9 @@ Show the detected plan before doing anything:
 Migration plan for: <SOURCE_DIR>
 
   Phase 1 — DesignSystem conversion:    [ENABLED | SKIPPED (--skip-designsystem)]
-  Phase 2 — AutoLayout conversion: [ENABLED | SKIPPED (--skip-autolayout)]
-  Phase 3 — ZIP creation:         ALWAYS
+  Phase 2 — AutoLayout conversion:      [ENABLED | SKIPPED (--skip-autolayout)]
+  Phase 3 — Theme token migration:      [ENABLED | SKIPPED (--skip-theme)]
+  Phase 4 — ZIP creation:               ALWAYS
 
 Proceed? [Y/n]
 ```
@@ -103,7 +112,7 @@ Wait for confirmation. If the user says no, stop.
 
 ---
 
-### STEP 1 · Validate project + detect platform
+### STEP 1 · Validate project + detect platform + detect theme
 
 Read `<SOURCE_DIR>/.wmproject.properties`.
 
@@ -116,6 +125,14 @@ Detect `PLATFORM`:
 - `<entry key="platformType">WEB</entry>` → `PLATFORM = WEB`
 - `<entry key="platformType">NATIVE_MOBILE</entry>` → `PLATFORM = MOBILE`
 - Any other value → `PLATFORM = WEB`
+
+**Detect theme** (only if `RUN_THEME = true` and `THEME_NAME` was not provided via `--theme`):
+- Read `.wmproject.properties` and extract `<entry key="currentThemeName">…</entry>`
+- If found, set `THEME_NAME` = extracted value
+- If not found, scan `<SOURCE_DIR>/src/main/webapp/theme/` for subdirectories
+  - If exactly one theme folder exists, use it
+  - If multiple theme folders exist, ask user: *"Which theme to migrate? [list]\nEnter theme name:"*
+  - If no theme folders exist, warn: *"No themes found; skipping Phase 3 (theme conversion)."* Set `RUN_THEME = false`
 
 Also read `pom.xml` and extract:
 - `CURRENT_PARENT_VERSION` — inside `<parent><version>…</version></parent>`
@@ -171,6 +188,22 @@ AutoLayout scope (Phase 2):
 If neither `wm-layoutgrid` nor `wm-linearlayout` is found and `RUN_AUTOLAYOUT = true`, warn:
 *"No wm-layoutgrid or wm-linearlayout found in target pages — Phase 2 will be a no-op."*
 Continue (don't abort).
+
+If `RUN_THEME = true`, also show the theme scope:
+
+Check if `<SOURCE_DIR>/src/main/webapp/theme/<THEME_NAME>/style.css` exists.
+
+```
+Theme scope (Phase 3):
+  Theme:         <THEME_NAME>
+  Source file:   src/main/webapp/theme/<THEME_NAME>/style.css
+  Output file:   src/main/webapp/design-tokens/app.override.css
+  Status:        [READY | FILE NOT FOUND - Phase 3 will be skipped]
+```
+
+If style.css is missing and `RUN_THEME = true`, warn:
+*"style.css not found in theme folder — Phase 3 will be skipped."*
+Set `RUN_THEME = false` and continue (don't abort).
 
 ---
 
@@ -249,7 +282,46 @@ output to build the per-page counts for the unified summary.
 
 ---
 
-## PHASE 3 — ZIP Creation (always runs)
+## PHASE 3 — Theme Token Migration (skip entirely if RUN_THEME = false)
+
+Use the **Read** tool to load `../wm-theme-conv/SKILL.md` (sibling skill folder).
+**Do NOT use the Skill tool** — read the file directly and execute its steps inline.
+
+Execute **STEP 0 through STEP 7** from that file inline, using the
+variables already resolved in STEP 0–1 above:
+
+| Variable | Source |
+|---|---|
+| Project directory | `TARGET_DIR` |
+| Theme name | `THEME_NAME` (detected in STEP 1) |
+| `DRY_RUN` | always `false` when called from this orchestrator |
+
+**Skip** these wm-theme-conv steps — already handled by this orchestrator:
+
+| Skip | Reason |
+|---|---|
+| STEP 0 — Parse arguments | Done in STEP 0 above |
+| STEP 1 — Validate project and theme | Done in STEP 1 above |
+
+Execute **STEP 2 through STEP 7** in order:
+- STEP 2: Read foundation.css and style.css
+- STEP 3: Extract tokens (typography, colors, spacing)
+- STEP 3b: Ask user about custom font family (interactive prompt)
+- STEP 4: Match tokens against foundation
+- STEP 5: Build override CSS with font imports
+- STEP 6: Create design-tokens folder
+- STEP 7: Print extraction summary (store results for unified summary)
+
+Capture the token extraction summary and store for the unified STEP 4 report:
+- Typography token count
+- Color token count
+- Spacing token count
+- Font family customization (YES/NO + font name)
+- Output file size
+
+---
+
+## PHASE 4 — ZIP Creation (always runs)
 
 Output ZIP is always named `<SOURCE_ZIP_BASENAME>_conv_ds.zip` and placed in the same
 directory as the source ZIP (or `TARGET_DIR`'s parent). Files are zipped from inside
@@ -298,7 +370,7 @@ Prefabs (passthrough — no conversion required):
   • <prefab>   used in: <pages>   ← omit section if no prefabs
 
 ════════════════════════════════════════════════════════
-PHASE 2 — AutoLayout Conversion   [COMPLETE | SKIPPED | DRY RUN]
+PHASE 2 — AutoLayout Conversion   [COMPLETE | SKIPPED]
 ════════════════════════════════════════════════════════
   Page              layoutgrids   gridrows   gridcolumns   linearlayouts   linearlayoutitems
   ──────────────    ───────────   ────────   ───────────   ─────────────   ─────────────────
@@ -311,26 +383,56 @@ PHASE 2 — AutoLayout Conversion   [COMPLETE | SKIPPED | DRY RUN]
   [--responsive: mobile breakpoint CSS injected into each page's .css]
 
 ════════════════════════════════════════════════════════
+PHASE 3 — Theme Token Migration   [COMPLETE | SKIPPED]
+════════════════════════════════════════════════════════
+Theme:     <THEME_NAME>
+Source:    src/main/webapp/theme/<THEME_NAME>/style.css
+Output:    src/main/webapp/design-tokens/app.override.css
+
+Extracted Tokens:
+  ✓ Typography  — N variables
+    Font family: [CUSTOM — imported | DEFAULT — using foundation]
+    Examples: --wm-font-family-brand ('Roboto'), --wm-h1-font-size (32px), ...
+  
+  ✓ Colors      — N variables
+    Examples: --wm-color-primary (#FF7250), --wm-color-error (#F44336), ...
+  
+  ✓ Spacing     — N variables
+    Examples: --wm-gap-base (8px), --wm-margin-base (4px), ...
+
+Token Mapping:
+  • M foundation overrides (e.g., --wm-color-primary, --wm-font-family-brand)
+  • N custom tokens (no foundation match, kept as-is)
+  • Total: M + N variables
+
+Font Configuration:
+  [Font family selection result]
+  ✓ Font: <FONT_NAME> | Using foundation defaults
+  ✓ Import: @import url() | system font | not needed
+
+════════════════════════════════════════════════════════
 Next steps
 ════════════════════════════════════════════════════════
   1. Import <ZIP_PATH> into WaveMaker Studio
   2. Studio auto-applies remaining DesignSystem migrations on first open
   3. Preview each page; adjust container gap/padding/alignment as needed
-  4. Customise branding via Theme panel (design-tokens)
-  5. Build and test the application
+  4. Verify theme tokens applied correctly (colors, typography, spacing)
+  5. Customise branding via Theme panel (design-tokens/app.override.css)
+  6. Build and test the application
 
 Known harmless Studio log lines:
   • "ResourceDoesNotExistException … wm_rn_config.json" — WEB projects don't
     have this file; Studio handles the 404 silently.
   • "ResourceDoesNotExistException … design-tokens/app.override.css" on first
-    open — Studio creates it itself during initial generation.
+    open — Studio creates it itself during initial generation (will load overrides
+    if present).
 ```
 
 ---
 
 ## Quick reference — what each phase does
 
-### Phase 1 (wm-designsystem-conv)
+### Phase 1 (wm-designsystem-conv) → Phase 2 (wm-autolayout-conv) → Phase 3 (wm-theme-conv) → Phase 4 (ZIP)
 
 | File | Change |
 |---|---|
@@ -350,8 +452,8 @@ Known harmless Studio log lines:
 |---|---|
 | `wm-layoutgrid` | `wm-container direction="row" wrap="true" width="fill" gap="0" columngap="0"` |
 | `wm-gridrow` | `wm-container direction="row" wrap="true" width="fill" gap="0" columngap="0"` |
-| `wm-gridcolumn columnwidth="N"` | `wm-container direction="column" width="<bootstrap%>"` |
-| `wm-linearlayout direction="row/column"` | `wm-container direction="<same>" wrap="true" width="fill" gap="<spacing>" alignment="<v>-<h>"` |
+| `wm-gridcolumn columnwidth="N"` | `wm-container direction="row" wrap="true" width="<bootstrap%>"` |
+| `wm-linearlayout direction="row/column"` | `wm-container direction="<same>" wrap="true" width="fill" gap="<spacing>" alignment="middle-<h>"` |
 | `wm-linearlayoutitem flexgrow="N"` | `wm-container direction="<perpendicular to parent>" width="<flexgrow%>" padding="<if set>"` |
 
 Width scale (both `columnwidth` and `flexgrow`): 1→8.33% 2→16.67% 3→25% 4→33.33% 5→41.67% 6→50% 7→58.33% 8→66.67% 9→75% 10→83.33% 11→91.67% 12→fill
@@ -372,3 +474,22 @@ that would break if the element were removed.
 | Both carry `data-wm-conv` AND outer `direction="row"` + inner `direction="column" width="fill"` | Remove outer; inner moves up |
 
 Inner container's name and all attributes are preserved exactly. Only the outer wrapper's open/close tags are removed.
+
+### Phase 3 (wm-theme-conv)
+
+| Source | Category | Target | Example |
+|---|---|---|---|
+| `style.css` typography | font-family, font-size, font-weight, line-height, letter-spacing | `design-tokens/app.override.css` | `--wm-font-family-brand: 'Roboto', sans-serif` |
+| `style.css` colors | primary, secondary, accent, error, success, surface, text, border | `design-tokens/app.override.css` | `--wm-color-primary: #FF7250` |
+| `style.css` spacing | gap, margin, padding, space, size | `design-tokens/app.override.css` | `--wm-gap-base: 8px` |
+
+**Token mapping strategy:**
+- If legacy token matches foundation semantic name (e.g., `--my-primary` → `--wm-color-primary`), it overrides the foundation value
+- If no foundation match, token is kept with original name as a custom override
+- Font family extraction is **interactive**: user is prompted whether to import custom font or use foundation defaults
+- Font imports are auto-detected: Google Fonts get `@import url()`, system fonts are used directly
+
+**Output location:** `src/main/webapp/design-tokens/app.override.css`
+- Created if missing
+- Appended if exists (preserves prior customizations)
+- Foundation values remain in `src/main/webapp/theme/<theme_name>/foundation.css`
