@@ -149,17 +149,44 @@ Using recommended defaults:
 
 **Option 2 — Copy from a reference DesignSystem project**
 
-Ask: *"Please provide the path to the reference DesignSystem project folder (or its zip)."*
+Ask: *"Please provide the path to the reference DesignSystem project folder or zip file."*
 
-- If the path is a `.zip`, extract it to a temp dir first (same logic as STEP 0 zip handling), then locate the project root.
-- Read `pom.xml` from the reference project and extract:
+Set `REFERENCE_INPUT` = the path the user supplies.
+
+**Resolve `REFERENCE_DIR`:**
+
+If `REFERENCE_INPUT` ends with `.zip` (case-insensitive):
+1. Verify the file exists — if not, tell the user and re-ask.
+2. Set `REF_BASENAME` = zip filename without extension.
+3. Set `REF_EXTRACT_DIR` = `<dirname(REFERENCE_INPUT)>/<REF_BASENAME>/`
+4. If `REF_EXTRACT_DIR` already exists, remove it first:
+   ```bash
+   rm -rf "<REF_EXTRACT_DIR>"
+   ```
+5. Extract:
+   ```bash
+   unzip -q "<REFERENCE_INPUT>" -d "<REF_EXTRACT_DIR>"
+   ```
+6. Detect the project root (same as STEP 0 zip handling):
+   - If `<REF_EXTRACT_DIR>/.wmproject.properties` exists → `REFERENCE_DIR = REF_EXTRACT_DIR`
+   - Otherwise → find the single subdirectory that contains `.wmproject.properties` and set `REFERENCE_DIR` to it.
+   - If none found → tell the user: *"Could not locate .wmproject.properties in the reference zip. Is this a WaveMaker DesignSystem project?"* and re-ask.
+
+If `REFERENCE_INPUT` is a folder (does not end in `.zip`):
+- Verify the folder exists and contains `.wmproject.properties` — if not, tell the user and re-ask.
+- Set `REFERENCE_DIR = REFERENCE_INPUT`
+
+**Extract versions from `REFERENCE_DIR`:**
+
+- Read `<REFERENCE_DIR>/pom.xml` and extract:
   - `PARENT_VERSION` — `<parent><version>…</version></parent>`
   - `RUNTIME_UI_VERSION` — `<wavemaker.app.runtime.ui.version>`
-- Read `.wmproject.properties` from the reference project and extract:
+- Read `<REFERENCE_DIR>/.wmproject.properties` and extract:
   - `UPGRADE_VERSION` — `<entry key="studioProjectUpgradeVersion">`
-- Display the extracted values and ask: *"Use these versions? (yes/no)"*
-  - Yes → proceed.
-  - No → fall back to Option 3 (ask user to enter manually).
+
+Display the extracted values and ask: *"Use these versions? (yes/no)"*
+  - Yes → proceed. **`REFERENCE_DIR` is now set and will be used in STEP 9 for mobile design-tokens.**
+  - No → fall back to Option 3 (ask user to enter manually). Set `REFERENCE_DIR` = (unset).
 
 ---
 
@@ -611,11 +638,11 @@ on disk (it does not auto-generate the foundation skeleton from a blank slate).
 
 **Source priority for the skeleton:**
 
-1. **User provided a reference project in STEP 2 (Option 2)** — use
-   `<REFERENCE_PROJECT>/src/main/webapp/design-tokens/` as the source.
+1. **`REFERENCE_DIR` is set (user chose Option 2 in STEP 2 and confirmed)** — use
+   `<REFERENCE_DIR>/src/main/webapp/design-tokens/` as the source.
    This ensures the foundation matches the exact version the user is targeting.
 
-2. **No reference project provided** — fall back to the skeleton bundled with
+2. **`REFERENCE_DIR` is unset (Option 1 or Option 3 was chosen)** — fall back to the skeleton bundled with
    this skill at `assets/mobile/design-tokens/`. No external dependency needed.
 
 Bundled skeleton structure (used when no reference is given):
@@ -638,7 +665,7 @@ assets/mobile/design-tokens/
 Steps:
 1. `rm -rf "<TARGET_DIR>/src/main/webapp/themes"`
 2. Determine `DESIGN_TOKENS_SRC`:
-   - If reference project was given in STEP 2 → `<REFERENCE_PROJECT>/src/main/webapp/design-tokens`
+   - If `REFERENCE_DIR` is set (user chose Option 2 and confirmed) → `<REFERENCE_DIR>/src/main/webapp/design-tokens`
    - Otherwise → `assets/mobile/design-tokens`
 3. Copy into the target project:
    ```bash
