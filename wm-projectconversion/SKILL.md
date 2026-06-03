@@ -1,5 +1,5 @@
 ---
-name: wm-designsystem-conv
+name: wm-projectconversion
 description: Use this skill to convert a WaveMaker DEFAULT-template project (WEB or
   NATIVE_MOBILE) to DesignSystem design system format. It updates pom.xml groupIds and versions
   from com.wavemaker.* to ai.wavemaker.*, marks the project as DesignSystem in
@@ -12,7 +12,7 @@ description: Use this skill to convert a WaveMaker DEFAULT-template project (WEB
   upgrade an existing non-DesignSystem WaveMaker project to DesignSystem only. Do not use this skill to
   convert grid or linear layout widgets to flex containers (use wm-autolayout-conv for
   that), or when the user wants the full migration pipeline in one shot (use
-  wm-studio-migrate instead).
+  wm-migrate-to-designsystemproject instead).
 metadata:
   version: 0.1.0
 ---
@@ -821,8 +821,8 @@ Otherwise, write the template content to `<TARGET_DIR>/migration_info.md`.
 
 ### STEP 13b · Generate the importable ZIP (standalone only)
 
-> **Skip this step when invoked from `wm-studio-migrate`** — the parent orchestrator
-> handles ZIP creation in its own PHASE 3. Only execute when running `wm-designsystem-conv`
+> **Skip this step when invoked from `wm-migrate-to-designsystemproject`** — the parent orchestrator
+> handles ZIP creation in its own PHASE 3. Only execute when running `wm-projectconversion`
 > directly.
 
 **This step is always run when standalone.** The whole point of the skill is to produce a zip

@@ -18,7 +18,7 @@ Install the skill globally via npm for it to be available to AI Agents:
 npx skills add wm-artifacts/wm-design-system-migrator
 ```
 
-Add specific skills or all when prompted. `/wm-studio-migrate` is the main pipeline — the other skills must be present for it to work.
+Add specific skills or all when prompted. `/wm-migrate-to-designsystemproject` is the main pipeline — the other skills must be present for it to work.
 
 ---
 
@@ -45,15 +45,15 @@ The skill prompts for these at runtime and lets you override them — paste valu
 
 | Command | Purpose |
 |---|---|
-| `/wm-studio-migrate` | **Full Design System migration** — pom.xml, properties, index.html, variables, layouts, NPM scope, migration history. Produces a ZIP. |
+| `/wm-migrate-to-designsystemproject` | **Full Design System migration** — pom.xml, properties, index.html, variables, layouts, NPM scope, migration history. Produces a ZIP. |
 | `/wm-autolayout-conv` | **Layout modernisation** — converts grid (`wm-layoutgrid / wm-gridrow / wm-gridcolumn`) and linear (`wm-linearlayout / wm-linearlayoutitem`) markup to `wm-container` flex layout. Dry-run mode available. |
-| `/wm-designsystem-conv` | **Design System conversion** — pom.xml, properties, index.html, variables, NPM scope, migration history. Produces a ZIP. |
+| `/wm-projectconversion` | **Design System conversion** — pom.xml, properties, index.html, variables, NPM scope, migration history. Produces a ZIP. |
 
 ---
 
 ## What Gets Converted
 
-### `/wm-studio-migrate`
+### `/wm-migrate-to-designsystemproject`
 
 | File / Area | What changes |
 |---|---|
@@ -121,25 +121,25 @@ The skill prompts for these at runtime and lets you override them — paste valu
 
 ```bash
 # Basic Design System conversion (accepts folder or .zip)
-/wm-studio-migrate /path/to/MyApp
+/wm-migrate-to-designsystemproject /path/to/MyApp
 
 # Convert + output to a different folder
-/wm-studio-migrate /path/to/MyApp.zip -o /path/to/MyApp_DesignSystem
+/wm-migrate-to-designsystemproject /path/to/MyApp.zip -o /path/to/MyApp_DesignSystem
 
 # Rename project during conversion
-/wm-studio-migrate /path/to/MyApp --project-name FinancePortal
+/wm-migrate-to-designsystemproject /path/to/MyApp --project-name FinancePortal
 
 # Layout modernisation only (dry run to preview)
 /wm-autolayout-conv /path/to/MyApp --dry-run
 
 # Full pipeline: Design System + layout modernisation + ZIP
-/wm-studio-migrate /path/to/MyApp
+/wm-migrate-to-designsystemproject /path/to/MyApp
 
 # Full pipeline, skip layout conversion
-/wm-studio-migrate /path/to/MyApp --skip-autolayout
+/wm-migrate-to-designsystemproject /path/to/MyApp --skip-autolayout
 
 # Full pipeline with responsive CSS injected into page stylesheets
-/wm-studio-migrate /path/to/MyApp --responsive
+/wm-migrate-to-designsystemproject /path/to/MyApp --responsive
 ```
 
 ---

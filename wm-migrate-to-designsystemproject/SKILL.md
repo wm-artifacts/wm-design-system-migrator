@@ -1,9 +1,9 @@
 ---
-name: wm-studio-migrate
+name: wm-migrate-to-designsystemproject
 description: Use this skill to run the complete WaveMaker project migration pipeline in
-  one shot. It orchestrates wm-designsystem-conv (DEFAULT → DesignSystem format conversion), 
+  one shot. It orchestrates wm-projectconversion (DEFAULT → DesignSystem format conversion), 
   wm-autolayout-conv (wm-layoutgrid / wm-gridrow / wm-gridcolumn + wm-linearlayout /
-  wm-linearlayoutitem → wm-container), wm-theme-conv (legacy theme tokens → design-tokens), 
+  wm-linearlayoutitem → wm-container), wm-theme-to-designsystem-conversion (legacy theme tokens → design-tokens), 
   then produces a Studio-importable ZIP. Shows a unified plan before writing any files and 
   prints a combined summary of all phases on completion. Individual phases can be skipped via 
   --skip-designsystem, --skip-autolayout, or --skip-theme. Supports project renaming, output 
@@ -14,19 +14,19 @@ metadata:
   version: 0.1.0
 ---
 
-# /wm-studio-migrate — WaveMaker Full Migration Orchestrator
+# /wm-migrate-to-designsystemproject — WaveMaker Full Migration Orchestrator
 
 Full pipeline to convert a WaveMaker DEFAULT-template project to DesignSystem,
 (optionally) convert grid layouts to flex containers, migrate legacy theme tokens,
 and produce a Studio-importable ZIP.
 
 Sub-skills this orchestrates:
-- **wm-designsystem-conv** — DesignSystem conversion (pom.xml, .wmproject.properties,
+- **wm-projectconversion** — DesignSystem conversion (pom.xml, .wmproject.properties,
   index.html, variables, page layouts, themes → design-tokens, npm scope,
   migration_info)
 - **wm-autolayout-conv** — Grid & LinearLayout → flex container conversion
   (wm-layoutgrid / wm-gridrow / wm-gridcolumn + wm-linearlayout / wm-linearlayoutitem → wm-container)
-- **wm-theme-conv** — Legacy theme token extraction and migration
+- **wm-theme-to-designsystem-conversion** — Legacy theme token extraction and migration
   (style.css typography/colors/spacing → design-tokens/app.override.css)
 
 Both sub-skills remain independently usable. Use this skill when you want the
@@ -37,15 +37,15 @@ full pipeline in one shot.
 ## Invocation
 
 ```
-/wm-studio-migrate <project_path>
-/wm-studio-migrate <project_path> -o <output_path>
-/wm-studio-migrate <project_path> --project-name <name>
-/wm-studio-migrate <project_path> --skip-autolayout
-/wm-studio-migrate <project_path> --skip-designsystem
-/wm-studio-migrate <project_path> --skip-theme
-/wm-studio-migrate <project_path> --responsive
-/wm-studio-migrate <project_path> --pages <Page1,Page2>
-/wm-studio-migrate <project_path> --theme <theme_name>
+/wm-migrate-to-designsystemproject <project_path>
+/wm-migrate-to-designsystemproject <project_path> -o <output_path>
+/wm-migrate-to-designsystemproject <project_path> --project-name <name>
+/wm-migrate-to-designsystemproject <project_path> --skip-autolayout
+/wm-migrate-to-designsystemproject <project_path> --skip-designsystem
+/wm-migrate-to-designsystemproject <project_path> --skip-theme
+/wm-migrate-to-designsystemproject <project_path> --responsive
+/wm-migrate-to-designsystemproject <project_path> --pages <Page1,Page2>
+/wm-migrate-to-designsystemproject <project_path> --theme <theme_name>
 ```
 
 | Argument | Required | Description |
@@ -219,7 +219,7 @@ All remaining steps operate on `TARGET_DIR`.
 
 ## PHASE 1 — DesignSystem Conversion (skip entirely if RUN_DESIGNSYSTEM = false)
 
-Use the **Read** tool to load `../wm-designsystem-conv/SKILL.md` (sibling skill folder).
+Use the **Read** tool to load `../wm-projectconversion/SKILL.md` (sibling skill folder).
 **Do NOT use the Skill tool** — read the file directly and execute its steps inline.
 
 Execute **STEP 4 through STEP 13** from that file inline, using the
@@ -234,7 +234,7 @@ variables already resolved in STEP 0–2 above:
 | `PROJECT_NAME` | `--project-name` flag (pass `NONE` if not supplied) |
 | `PLATFORM` | Detected in STEP 1 (`WEB` or `MOBILE`) |
 
-**Skip** these wm-designsystem-conv steps — already handled by this orchestrator:
+**Skip** these wm-projectconversion steps — already handled by this orchestrator:
 
 | Skip | Reason |
 |---|---|
@@ -284,7 +284,7 @@ output to build the per-page counts for the unified summary.
 
 ## PHASE 3 — Theme Token Migration (skip entirely if RUN_THEME = false)
 
-Use the **Read** tool to load `../wm-theme-conv/SKILL.md` (sibling skill folder).
+Use the **Read** tool to load `../wm-theme-to-designsystem-conversion/SKILL.md` (sibling skill folder).
 **Do NOT use the Skill tool** — read the file directly and execute its steps inline.
 
 Execute **STEP 0 through STEP 7** from that file inline, using the
@@ -296,7 +296,7 @@ variables already resolved in STEP 0–1 above:
 | Theme name | `THEME_NAME` (detected in STEP 1) |
 | `DRY_RUN` | always `false` when called from this orchestrator |
 
-**Skip** these wm-theme-conv steps — already handled by this orchestrator:
+**Skip** these wm-theme-to-designsystem-conversion steps — already handled by this orchestrator:
 
 | Skip | Reason |
 |---|---|
@@ -432,7 +432,7 @@ Known harmless Studio log lines:
 
 ## Quick reference — what each phase does
 
-### Phase 1 (wm-designsystem-conv) → Phase 2 (wm-autolayout-conv) → Phase 3 (wm-theme-conv) → Phase 4 (ZIP)
+### Phase 1 (wm-projectconversion) → Phase 2 (wm-autolayout-conv) → Phase 3 (wm-theme-to-designsystem-conversion) → Phase 4 (ZIP)
 
 | File | Change |
 |---|---|
@@ -475,7 +475,7 @@ that would break if the element were removed.
 
 Inner container's name and all attributes are preserved exactly. Only the outer wrapper's open/close tags are removed.
 
-### Phase 3 (wm-theme-conv)
+### Phase 3 (wm-theme-to-designsystem-conversion)
 
 | Source | Category | Target | Example |
 |---|---|---|---|

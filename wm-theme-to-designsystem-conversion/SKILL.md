@@ -1,11 +1,11 @@
 ---
-name: wm-theme-conv
+name: wm-theme-to-designsystem-conversion
 description: Extract global design tokens (typography, colors, spacing) from legacy theme style.css and merge with foundation.css, outputting to app.override.css for design system theme customization. Use this skill to migrate old theme configurations to the new design-token-based system during a DesignSystem template migration.
 metadata:
   version: 0.1.0
 ---
 
-# /wm-theme-conv — Legacy Theme → Design Tokens Converter
+# /wm-theme-to-designsystem-conversion — Legacy Theme → Design Tokens Converter
 
 Convert legacy custom theme styles from `style.css` into design tokens that override
 the foundation theme. Extracts global tokens for typography, colors, and spacing, then
@@ -16,9 +16,9 @@ writes them to `src/main/webapp/design-tokens/app.override.css`.
 ## Invocation
 
 ```
-/wm-theme-conv <project_path> <theme_name>
-/wm-theme-conv <project_path> <theme_name> --dry-run
-/wm-theme-conv <project_path> <theme_name> --verbose
+/wm-theme-to-designsystem-conversion <project_path> <theme_name>
+/wm-theme-to-designsystem-conversion <project_path> <theme_name> --dry-run
+/wm-theme-to-designsystem-conversion <project_path> <theme_name> --verbose
 ```
 
 | Argument | Required | Description |
@@ -40,7 +40,7 @@ Extract:
 - `DRY_RUN` — `true` if `--dry-run` is present
 - `VERBOSE` — `true` if `--verbose` is present
 
-If either `PROJECT_DIR` or `THEME_NAME` is missing, ask: *"Please provide the project path and theme name, e.g., `/wm-theme-conv /path/to/project default`"*
+If either `PROJECT_DIR` or `THEME_NAME` is missing, ask: *"Please provide the project path and theme name, e.g., `/wm-theme-to-designsystem-conversion /path/to/project default`"*
 
 ---
 
