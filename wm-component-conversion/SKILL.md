@@ -1,5 +1,5 @@
 ---
-name: wm-autolayout-conv
+name: wm-component-conversion
 description: Use this skill to convert legacy WaveMaker grid layout widgets
   (wm-layoutgrid, wm-gridrow, wm-gridcolumn) and linear layout widgets (wm-linearlayout,
   wm-linearlayoutitem) to modern flex-based wm-container widgets in WaveMaker project page
@@ -16,7 +16,7 @@ metadata:
   version: 0.1.0
 ---
 
-# /wm-autolayout-conv — WaveMaker Grid & LinearLayout → Flex Container Converter
+# /wm-component-conversion — WaveMaker Grid & LinearLayout → Flex Container Converter
 
 Convert `wm-layoutgrid` / `wm-gridrow` / `wm-gridcolumn` and
 `wm-linearlayout` / `wm-linearlayoutitem` markup to `wm-container`
@@ -30,10 +30,10 @@ The generated containers use Bootstrap-mapped or flexgrow-mapped percentage widt
 ## Invocation
 
 ```
-/wm-autolayout-conv <project_path>
-/wm-autolayout-conv <project_path> --dry-run
-/wm-autolayout-conv <project_path> --pages <Page1,Page2>
-/wm-autolayout-conv <project_path> --responsive
+/wm-component-conversion <project_path>
+/wm-component-conversion <project_path> --dry-run
+/wm-component-conversion <project_path> --pages <Page1,Page2>
+/wm-component-conversion <project_path> --responsive
 ```
 
 | Argument | Required | Description |
@@ -473,7 +473,7 @@ rm -f "<PROJECT_DIR>/wm_grid_conv_tmp.py"
 ### STEP 3b · Generate the importable ZIP (standalone only)
 
 > **Skip this step when invoked from `wm-migrate-to-designsystemproject`** — the parent orchestrator
-> handles Packaging in its own PHASE 4. Only execute when running `wm-autolayout-conv`
+> handles Packaging in its own PHASE 4. Only execute when running `wm-component-conversion`
 > directly.
 
 If `DRY_RUN` is `true`, skip this step entirely (dry-run never writes files or produces a ZIP).

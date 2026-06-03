@@ -2,7 +2,7 @@
 name: wm-migrate-to-designsystemproject
 description: Use this skill to run the complete WaveMaker project migration pipeline in
   one shot. It orchestrates wm-projectconversion (DEFAULT → DesignSystem format conversion), 
-  wm-autolayout-conv (wm-layoutgrid / wm-gridrow / wm-gridcolumn + wm-linearlayout /
+  wm-component-conversion (wm-layoutgrid / wm-gridrow / wm-gridcolumn + wm-linearlayout /
   wm-linearlayoutitem → wm-container), wm-theme-to-designsystem-conversion (legacy theme tokens → design-tokens), 
   then produces a Studio-importable ZIP. Shows a unified plan before writing any files and 
   prints a combined summary of all phases on completion. Individual phases can be skipped via 
@@ -24,7 +24,7 @@ Sub-skills this orchestrates:
 - **wm-projectconversion** — Project conversion (pom.xml, .wmproject.properties,
   index.html, variables, page layouts, themes → design-tokens, npm scope,
   migration_info)
-- **wm-autolayout-conv** — Grid & LinearLayout → flex container conversion
+- **wm-component-conversion** — Grid & LinearLayout → flex container conversion
   (wm-layoutgrid / wm-gridrow / wm-gridcolumn + wm-linearlayout / wm-linearlayoutitem → wm-container)
 - **wm-theme-to-designsystem-conversion** — Legacy theme token extraction and migration
   (style.css typography/colors/spacing → design-tokens/app.override.css)
@@ -258,7 +258,7 @@ must happen AFTER PHASE 3 (theme token extraction) to preserve the source files.
 
 ## PHASE 2 — Layout Conversion (skip entirely if RUN_AUTOLAYOUT = false)
 
-Use the **Read** tool to load `../wm-autolayout/SKILL.md` (sibling skill folder).
+Use the **Read** tool to load `../wm-component-conversion/SKILL.md` (sibling skill folder).
 **Do NOT use the Skill tool** — read the file directly and execute its steps inline.
 
 Execute **STEP 1 and STEP 3** from that file inline, using the
@@ -271,7 +271,7 @@ variables already resolved in STEP 0 above:
 | `ADD_RESPONSIVE` | `true` if `--responsive` was specified |
 | `DRY_RUN` | always `false` when called from this orchestrator |
 
-**Skip** these wm-autolayout-conv steps — already handled by this orchestrator:
+**Skip** these wm-component-conversion steps — already handled by this orchestrator:
 
 | Skip | Reason |
 |---|---|
@@ -458,7 +458,7 @@ Known harmless Studio log lines:
 
 ## Quick reference — what each phase does
 
-### Phase 1 (wm-projectconversion) → Phase 2 (wm-autolayout-conv) → Phase 3 (wm-theme-to-designsystem-conversion) → Phase 4 (Packaging)
+### Phase 1 (wm-projectconversion) → Phase 2 (wm-component-conversion) → Phase 3 (wm-theme-to-designsystem-conversion) → Phase 4 (Packaging)
 
 | File | Change |
 |---|---|
@@ -472,7 +472,7 @@ Known harmless Studio log lines:
 | `wm_rn_config.json` | MOBILE only: `enableDesignTokens=true`, `enableHermes=true` |
 | `migration_info.json` | DesignSystem entries 1115.03–1115.07 appended; full history preserved |
 
-### Phase 2 (wm-autolayout-conv)
+### Phase 2 (wm-component-conversion)
 
 | Widget | Converts to |
 |---|---|

@@ -41,12 +41,12 @@ The skill prompts for these at runtime and lets you override them — paste valu
 
 ---
 
-## Slash Commands
+## Available Skills
 
 | Command | Purpose |
 |---|---|
 | `/wm-migrate-to-designsystemproject` | **Full Design System migration** — pom.xml, properties, index.html, variables, layouts, NPM scope, migration history. Produces a ZIP. |
-| `/wm-autolayout-conv` | **Layout modernisation** — converts grid (`wm-layoutgrid / wm-gridrow / wm-gridcolumn`) and linear (`wm-linearlayout / wm-linearlayoutitem`) markup to `wm-container` flex layout. Dry-run mode available. |
+| `/wm-component-conversion` | **Layout modernisation** — converts grid (`wm-layoutgrid / wm-gridrow / wm-gridcolumn`) and linear (`wm-linearlayout / wm-linearlayoutitem`) markup to `wm-container` flex layout. Dry-run mode available. |
 | `/wm-projectconversion` | **Project conversion** — pom.xml, properties, index.html, variables, NPM scope, migration history. Produces a ZIP. |
 
 ---
@@ -70,7 +70,7 @@ The skill prompts for these at runtime and lets you override them — paste valu
 | `migration_info.json` | Design System migration history entries (1115.03–1115.07 for WEB, +1115.08 for MOBILE) appended; existing history preserved |
 
 
-### `/wm-autolayout-conv`
+### `/wm-component-conversion`
 
 | Widget | Converts to |
 |---|---|
@@ -130,7 +130,7 @@ The skill prompts for these at runtime and lets you override them — paste valu
 /wm-migrate-to-designsystemproject /path/to/MyApp --project-name FinancePortal
 
 # Layout modernisation only (dry run to preview)
-/wm-autolayout-conv /path/to/MyApp --dry-run
+/wm-component-conversion /path/to/MyApp --dry-run
 
 # Full pipeline: Project conversion + Layout conversion + Packaging
 /wm-migrate-to-designsystemproject /path/to/MyApp

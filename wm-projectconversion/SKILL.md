@@ -10,7 +10,7 @@ description: Use this skill to convert a WaveMaker DEFAULT-template project (WEB
   NATIVE_MOBILE platforms. Versions can be entered manually, copied from a reference DesignSystem
   project, or accepted as recommended defaults. Use this skill when the user wants to
   upgrade an existing non-DesignSystem WaveMaker project to DesignSystem only. Do not use this skill to
-  convert grid or linear layout widgets to flex containers (use wm-autolayout-conv for
+  convert grid or linear layout widgets to flex containers (use wm-component-conversion for
   that), or when the user wants the full migration pipeline in one shot (use
   wm-migrate-to-designsystemproject instead).
 metadata:
