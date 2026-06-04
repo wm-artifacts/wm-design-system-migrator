@@ -1,6 +1,6 @@
 # WaveMaker DEFAULT → Design System Migration
 
-> Automated migration skill for converting WaveMaker DEFAULT-template apps (WEB & NATIVE_MOBILE, 11.x) to Design System — deterministic, repeatable, and Studio-importable ZIP output.
+> Automated migration skill for converting WaveMaker DEFAULT-template apps (WEB & NATIVE_MOBILE, 11.x) to Design System — deterministic, repeatable, and Studio-importable ZIP output
 
 ---
 
