@@ -188,6 +188,14 @@ Display the extracted values and ask: *"Use these versions? (yes/no)"*
   - Yes → proceed. **`REFERENCE_DIR` is now set and will be used in STEP 9 for mobile design-tokens.**
   - No → fall back to Option 3 (ask user to enter manually). Set `REFERENCE_DIR` = (unset).
 
+**Post-extraction cleanup (zip only):**
+
+If `REFERENCE_INPUT` was a `.zip` file, delete the extracted folder after versions have been fetched (regardless of yes/no above):
+```bash
+rm -rf "<REF_EXTRACT_DIR>"
+```
+If `REFERENCE_INPUT` was a folder, do **not** delete anything.
+
 ---
 
 **Option 3 — Enter versions manually**

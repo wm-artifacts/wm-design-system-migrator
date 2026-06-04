@@ -143,35 +143,142 @@ Also read `pom.xml` and extract:
 
 ### STEP 2 · Confirm DesignSystem target versions (only when RUN_DESIGNSYSTEM = true)
 
-**This sub-step is mandatory whenever Phase 1 runs — do not skip or use defaults silently.**
+**This sub-step is mandatory whenever Phase 1 runs — stop and wait for the user to choose; do not fill in versions or use defaults without explicit user input.**
 
-Display:
+Display the detected platform, current versions, and recommended DesignSystem versions, then prompt the user for how to proceed:
 
 ```
 Detected platform: [WEB or MOBILE]
-Current versions:
+
+Current project versions:
   Parent POM:     <CURRENT_PARENT_VERSION>
   Runtime UI:     <CURRENT_RUNTIME_VERSION>
   Studio upgrade: <CURRENT_UPGRADE_VERSION>
 
-Target DesignSystem versions — press Enter to accept recommended:
-  Parent POM     [recommended: <REC_PARENT>]:  ___
-  Runtime UI     [recommended: <REC_RUNTIME>]: ___
-  Studio upgrade [recommended: <REC_UPGRADE>]: ___
+Recommended DesignSystem versions:
+  Parent POM:     <REC_PARENT>      ← from defaults table below, matched to PLATFORM
+  Runtime UI:     <REC_RUNTIME>
+  Studio upgrade: <REC_UPGRADE>
+
+How would you like to set the target DesignSystem versions?
+  1) Use recommended defaults
+  2) Copy versions from a reference DesignSystem project
+  3) Enter versions manually
 ```
 
-Recommended defaults:
+**Stop here — wait for the user's choice before continuing. Do not proceed or infer a choice.**
 
-| Field | WEB | MOBILE |
+---
+
+**Option 1 — Use recommended defaults**
+
+Set versions immediately from the table below and confirm to the user:
+
+```
+Using recommended defaults:
+  Parent POM version:     <RECOMMENDED_PARENT>
+  Runtime UI version:     <RECOMMENDED_RUNTIME>
+  Studio upgrade version: <RECOMMENDED_UPGRADE>
+```
+
+---
+
+**Option 2 — Copy from a reference DesignSystem project**
+
+Ask: *"Please provide the path to the reference DesignSystem project folder or zip file."*
+
+Set `REFERENCE_INPUT` = the path the user supplies.
+
+**Resolve `REFERENCE_DIR`:**
+
+If `REFERENCE_INPUT` ends with `.zip` (case-insensitive):
+1. Verify the file exists — if not, tell the user and re-ask.
+2. Set `REF_BASENAME` = zip filename without extension.
+3. Set `REF_EXTRACT_DIR` = `<dirname(REFERENCE_INPUT)>/<REF_BASENAME>/`
+4. If `REF_EXTRACT_DIR` already exists, remove it first:
+   ```bash
+   rm -rf "<REF_EXTRACT_DIR>"
+   ```
+5. Extract:
+   ```bash
+   unzip -q "<REFERENCE_INPUT>" -d "<REF_EXTRACT_DIR>"
+   ```
+6. Detect the project root (same as STEP 0 zip handling):
+   - If `<REF_EXTRACT_DIR>/.wmproject.properties` exists → `REFERENCE_DIR = REF_EXTRACT_DIR`
+   - Otherwise → find the single subdirectory that contains `.wmproject.properties` and set `REFERENCE_DIR` to it.
+   - If none found → tell the user: *"Could not locate .wmproject.properties in the reference zip. Is this a WaveMaker DesignSystem project?"* and re-ask.
+
+If `REFERENCE_INPUT` is a folder (does not end in `.zip`):
+- Verify the folder exists and contains `.wmproject.properties` — if not, tell the user and re-ask.
+- Set `REFERENCE_DIR = REFERENCE_INPUT`
+
+**Extract versions from `REFERENCE_DIR`:**
+
+- Read `<REFERENCE_DIR>/pom.xml` and extract:
+  - `PARENT_VERSION` — `<parent><version>…</version></parent>`
+  - `RUNTIME_UI_VERSION` — `<wavemaker.app.runtime.ui.version>`
+- Read `<REFERENCE_DIR>/.wmproject.properties` and extract:
+  - `UPGRADE_VERSION` — `<entry key="studioProjectUpgradeVersion">`
+
+Display the extracted values and ask: *"Use these versions? (yes/no)"*
+  - Yes → proceed. **`REFERENCE_DIR` is now set and will be used in STEP 9 for mobile design-tokens.**
+  - No → fall back to Option 3 (ask user to enter manually). Set `REFERENCE_DIR` = (unset).
+
+**Post-extraction cleanup (zip only):**
+
+If `REFERENCE_INPUT` was a `.zip` file, delete the extracted folder after versions have been fetched (regardless of yes/no above):
+```bash
+rm -rf "<REF_EXTRACT_DIR>"
+```
+If `REFERENCE_INPUT` was a folder, do **not** delete anything.
+
+---
+
+**Option 3 — Enter versions manually**
+
+Prompt:
+
+```
+Please enter the target DesignSystem versions (press Enter to accept the recommended default):
+  Parent POM version    [recommended: <RECOMMENDED_PARENT>]:  ___
+  Runtime UI version    [recommended: <RECOMMENDED_RUNTIME>]: ___
+  Studio upgrade ver    [recommended: <RECOMMENDED_UPGRADE>]: ___
+```
+
+Empty input for any field → use the recommended default for that field.
+
+---
+
+**Recommended defaults by platform:**
+
+| Version field | WEB default | MOBILE default |
 |---|---|---|
 | Parent POM | `1.0.0-20260513150623` | `1.0.0-20260513150623` |
 | Runtime UI | `1.0.0-next.27577` | `1.0.0-next.27601` |
 | Studio upgrade | `1115.07` | `1115.08` |
 
-Set `PARENT_VERSION`, `RUNTIME_UI_VERSION`, `UPGRADE_VERSION` from user input or defaults.
+> Mobile DesignSystem uses the **same** version family as web (the `1.0.0-*` line). The older `12.0.0-*` numbers in earlier skill versions were wrong — they came from a pre-DesignSystem mobile track.
 
-If `RUN_AUTOLAYOUT = true`, also show the autolayout scope at this point so the
-user sees the full plan before any files are written:
+After whichever option is chosen, set:
+- `PARENT_VERSION`
+- `RUNTIME_UI_VERSION`
+- `UPGRADE_VERSION`
+
+---
+
+Now show the full scope so the user can review the complete plan before any files are written.
+
+
+Show the versions chosen by the user(or defaults if user chose defaults):
+
+```
+Migrated Project Versions:
+  Parent POM version:     <PARENT_VERSION>
+  Runtime UI version:     <RUNTIME_UI_VERSION>
+  Studio upgrade version: <UPGRADE_VERSION>
+```
+
+If `RUN_AUTOLAYOUT = true`, scan and display the autolayout scope:
 
 Scan `<SOURCE_DIR>/src/main/webapp/pages/**/*.html` for `wm-layoutgrid` **and** `wm-linearlayout`.
 If `PAGE_FILTER` is set, restrict to matching folder names.
@@ -189,7 +296,7 @@ If neither `wm-layoutgrid` nor `wm-linearlayout` is found and `RUN_AUTOLAYOUT = 
 *"No wm-layoutgrid or wm-linearlayout found in target pages — Phase 2 will be a no-op."*
 Continue (don't abort).
 
-If `RUN_THEME = true`, also show the theme scope:
+If `RUN_THEME = true`, show the theme scope:
 
 Check if `<SOURCE_DIR>/src/main/webapp/themes/<THEME_NAME>/style.css` exists.
 
