@@ -193,10 +193,10 @@ When extracting theme tokens, the skill automatically installs the `@wavemaker/f
 - `foundation/foundation.css` — all `--wm-*` semantic token definitions
 
 **Global token definitions** (JSON reference):
-- `src/tokens/web/global/border.json` — border-radius, border-width, border-color tokens
-- `src/tokens/web/global/color.json` — semantic color tokens (primary, secondary, error, success, warning, info)
-- `src/tokens/web/global/spacing.json` — gap, margin, padding, size tokens
-- `src/tokens/web/global/typography.json` — font-family, font-size, font-weight, line-height tokens
+- `src/tokens/web/global/radius/radius.json` — border-radius, border-width, border-color tokens
+- `src/tokens/web/global/color/color.json` — semantic color tokens (primary, secondary, error, success, warning, info)
+- `src/tokens/web/global/spacing/spacing.json` — gap, margin, padding, size tokens
+- `src/tokens/web/global/typography/typography.json` — font-family, font-size, font-weight, line-height tokens
 
 **Component styles** (optional):
 - `src/tokens/web/components/` — component-specific token overrides for button, input, navigation, etc.

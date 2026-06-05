@@ -73,10 +73,10 @@ Check:
    - Used as reference for token mapping
 
    **Global token definitions:** `node_modules/@wavemaker/foundation-css/src/tokens/web/global/`
-   - `border.json` — border-radius, border-width, border-color tokens
-   - `color.json` — color semantic tokens (primary, secondary, error, success, etc.)
-   - `spacing.json` — gap, margin, padding, size tokens
-   - `typography.json` — font-family, font-size, font-weight, line-height tokens
+   - `radius/radius.json` — border-radius, border-width tokens
+   - `color/color.json` — color semantic tokens (primary, secondary, error, success, etc.)
+   - `spacing/spacing.json` — gap, margin, padding, size tokens
+   - `typography/typography.json` — font-family, font-size, font-weight, line-height tokens
    - These JSON files define the complete semantic token structure
 
    **Component structure (reference only):** `node_modules/@wavemaker/foundation-css/src/tokens/web/components/`
@@ -390,7 +390,7 @@ Token Mapping (against reference foundation.css):
   
 Reference Used:
   • Foundation: @wavemaker/foundation-css/foundation/foundation.css (installed via npm)
-  • Global tokens: @wavemaker/foundation-css/src/tokens/web/global/*.json
+  • Global tokens: @wavemaker/foundation-css/src/tokens/web/global/{radius,color,spacing,typography}/*.json
   • Legacy theme: <PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/style.css
 
 Font Configuration:
