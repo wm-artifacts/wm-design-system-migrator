@@ -189,12 +189,19 @@ Writes to `src/main/webapp/design-tokens/app.override.css`:
 
 When extracting theme tokens, the skill automatically installs the `@wavemaker/foundation-css` npm package into the project's `design-tokens/` folder. This package provides:
 
-- **Complete foundation token definitions** — all `--wm-*` semantic tokens
-- **Component styles** — pre-built styles for all Design System components
-- **Global styles** — application-level styling foundation
-- **Live updates** — always references latest foundation definitions via npm
+**Foundation CSS file:**
+- `foundation/foundation.css` — all `--wm-*` semantic token definitions
 
-The installation happens transparently during token extraction (STEP 2) and ensures your design tokens are always aligned with the current Design System standards.
+**Global token definitions** (JSON reference):
+- `src/tokens/web/global/border.json` — border-radius, border-width, border-color tokens
+- `src/tokens/web/global/color.json` — semantic color tokens (primary, secondary, error, success, warning, info)
+- `src/tokens/web/global/spacing.json` — gap, margin, padding, size tokens
+- `src/tokens/web/global/typography.json` — font-family, font-size, font-weight, line-height tokens
+
+**Component styles** (optional):
+- `src/tokens/web/components/` — component-specific token overrides for button, input, navigation, etc.
+
+The installation happens transparently during token extraction (STEP 2) and ensures your design tokens are always aligned with the current Design System standards. The skill uses the global token definitions to intelligently map extracted theme values to semantic `--wm-*` token names.
 
 ### Execution in Full Pipeline
 
