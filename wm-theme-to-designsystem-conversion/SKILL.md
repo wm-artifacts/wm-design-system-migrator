@@ -389,7 +389,8 @@ Token Mapping (against reference foundation.css):
   • Total: M + N variables
   
 Reference Used:
-  • Foundation: wm-theme-conv/assets/foundation.css (standard design system tokens)
+  • Foundation: @wavemaker/foundation-css/foundation/foundation.css (installed via npm)
+  • Global tokens: @wavemaker/foundation-css/src/tokens/web/global/*.json
   • Legacy theme: <PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/style.css
 
 Font Configuration:
@@ -716,7 +717,7 @@ Do you want to use this font family in the design system?
  * Source: /path/to/project/src/main/webapp/themes/default/style.css
  * 
  * These tokens override foundation.css values.
- * Foundation reference: wm-theme-conv/assets/foundation.css (standard design system tokens)
+ * Foundation reference: @wavemaker/foundation-css/foundation/foundation.css (npm package)
  */
 
 /* Font imports */
@@ -744,7 +745,7 @@ Do you want to use this font family in the design system?
 
 ## Notes
 
-- **Foundation reference file**: `../assets/foundation.css` is bundled with the wm-theme-conv skill and defines the standard design system token names. It is NOT read from the project directory — it's a reference for intelligent token mapping.
+- **Foundation reference**: The `@wavemaker/foundation-css` npm package is installed during STEP 2 to provide foundation token definitions, global token JSON schemas, and component structure. This ensures the latest Design System standards are used for intelligent token mapping.
 - **Semantic mapping**: The converter tries to infer semantic meaning from variable names (e.g., `--my-primary` → `--wm-color-primary`). For ambiguous names, tokens are treated as custom (kept as-is).
 - **Foundation reference matching**: If a token value in style.css **already uses a foundation variable** (e.g., `--my-gap: var(--wm-gap-base)`), it is skipped (no override needed).
 - **Font family handling**:
