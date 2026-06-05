@@ -110,7 +110,7 @@ Automatically extracts legacy theme CSS variables from `src/main/webapp/themes/<
 | **Variable reference mapping** | Token values referencing other variables updated to use mapped names: `var(--brand-primary)` → `var(--wm-color-primary)`. Ensures all references resolve correctly. |
 | **Dependent variable mapping** | Color-mix and calc expressions using old token names updated to use new mapped names: `color-mix(in srgb, var(--brand-primary), ...)` → `color-mix(in srgb, var(--wm-color-primary), ...)` |
 | **Font family customization** | User prompted whether to import custom font families. Google Fonts auto-detected and wrapped in `@import url()`. System fonts used directly. |
-| **Foundation reference** | Uses bundled foundation.css semantic token names for intelligent mapping—ensures consistency with Design System standards. |
+| **Dynamic foundation reference** | Installs `@wavemaker/foundation-css` npm package to access complete foundation token definitions, component styles, and global styles—ensures consistency with Design System standards and always uses latest definitions. |
 
 ### Token Categories
 
@@ -184,6 +184,17 @@ Writes to `src/main/webapp/design-tokens/app.override.css`:
 # Verbose output showing full token extraction and deduplication details
 /wm-theme-to-designsystem-conversion /path/to/MyApp Wavemaker-Ai --verbose
 ```
+
+### Foundation Package Installation
+
+When extracting theme tokens, the skill automatically installs the `@wavemaker/foundation-css` npm package into the project's `design-tokens/` folder. This package provides:
+
+- **Complete foundation token definitions** — all `--wm-*` semantic tokens
+- **Component styles** — pre-built styles for all Design System components
+- **Global styles** — application-level styling foundation
+- **Live updates** — always references latest foundation definitions via npm
+
+The installation happens transparently during token extraction (STEP 2) and ensures your design tokens are always aligned with the current Design System standards.
 
 ### Execution in Full Pipeline
 

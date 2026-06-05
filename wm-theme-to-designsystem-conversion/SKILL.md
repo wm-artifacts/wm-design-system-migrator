@@ -1,6 +1,6 @@
 ---
 name: wm-theme-to-designsystem-conversion
-description: Extract global design tokens (typography, colors, spacing) from legacy theme style.css and merge with foundation.css, outputting to app.override.css for design system theme customization. Use this skill to migrate old theme configurations to the new design-token-based system during a DesignSystem template migration.
+description: Extract global design tokens (typography, colors, spacing) from legacy theme style.css using @wavemaker/foundation-css package reference, outputting to app.override.css for design system theme customization. Use this skill to migrate old theme configurations to the new design-token-based system during a DesignSystem template migration.
 metadata:
   version: 0.1.0
 ---
@@ -58,15 +58,34 @@ Check:
 
 ---
 
-### STEP 2 · Read foundation.css (reference) and legacy style.css
+### STEP 2 · Install foundation.css package and read legacy style.css
 
-**Foundation CSS location (reference file):** `../assets/foundation.css`
-(This is the standard design system base token file with `:root { --wm-*: ... }` variables.
-It's bundled with the wm-theme-conv skill as a reference for token mapping, NOT from the project.)
+**Foundation CSS package installation:**
+1. Install the `@wavemaker/foundation-css` package into the assets folder:
+   ```bash
+   npm install @wavemaker/foundation-css --prefix <PROJECT_DIR>/src/main/webapp/design-tokens/
+   ```
+
+2. After installation, reference the following from the installed package:
+
+   **Foundation CSS file:** `node_modules/@wavemaker/foundation-css/foundation/foundation.css`
+   - Contains all `:root { --wm-*: ... }` semantic token definitions
+   - Used as reference for token mapping
+
+   **Global token definitions:** `node_modules/@wavemaker/foundation-css/src/tokens/web/global/`
+   - `border.json` — border-radius, border-width, border-color tokens
+   - `color.json` — color semantic tokens (primary, secondary, error, success, etc.)
+   - `spacing.json` — gap, margin, padding, size tokens
+   - `typography.json` — font-family, font-size, font-weight, line-height tokens
+   - These JSON files define the complete semantic token structure
+
+   **Component structure (reference only):** `node_modules/@wavemaker/foundation-css/src/tokens/web/components/`
+   - Component-specific tokens if needed for advanced customization
+   - Structure: `components/<component-name>/<component-name>.json`
 
 **Legacy CSS location (from project):** `<PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/style.css`
 
-Read both files as text. Foundation.css is used as a reference to identify semantic token names
+Read all files as text. Foundation definitions are used to identify semantic token names
 and match legacy theme tokens against foundation tokens for intelligent override mapping.
 
 ---
