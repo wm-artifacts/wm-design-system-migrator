@@ -7,9 +7,12 @@ metadata:
 
 # /wm-theme-to-designsystem-conversion — Legacy Theme → Design Tokens Converter
 
-Convert legacy custom theme styles from `style.css` into design tokens that override
-the foundation theme. Extracts global tokens for typography, colors, and spacing, then
-writes them to `src/main/webapp/design-tokens/app.override.css`.
+Convert legacy custom theme styles from `style.css`, `src/main/webapp/app.css`, and page-level CSS into design tokens.
+Extracts:
+- **Global tokens** for typography, colors, spacing → `src/main/webapp/design-tokens/app.override.css`
+- **Component variants/appearances** from legacy selectors → `src/main/webapp/design-tokens/overrides/components/<component>/<component>.json`
+
+Supports component appearance creation with semantic token references, state definitions, and responsive mappings.
 
 ---
 
@@ -415,6 +418,131 @@ Next Steps:
 
 If `--dry-run`: note that no files were written.
 If `--verbose`: show the full token list with mappings and font import URL.
+
+---
+
+### STEP 8 · Extract component variants (optional)
+
+If legacy styles contain component-specific customizations (e.g., `.btn.dark-btn { ... }`, custom button states, custom input appearances, etc.):
+
+1. **Scan for component patterns** in:
+   - `<PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/style.css`
+   - `<PROJECT_DIR>/src/main/webapp/app.css` (if exists)
+   - Page-level CSS files (if exists)
+
+2. **Identify component selectors**:
+   - Button variants: `.btn`, `.btn-primary`, `.btn.dark-btn`, `.btn-ghost`, etc.
+   - Input variants: `.input`, `.input-error`, `.input-filled`, `.input-outlined`, etc.
+   - Navigation variants: `.nav-item`, `.nav-item.active`, `.nav-link`, etc.
+   - Any custom component class patterns in legacy styles
+
+3. **Extract appearance definitions** and generate dual outputs:
+
+   **Output 1 — Component variant JSON file:**
+   `src/main/webapp/design-tokens/overrides/components/<component>/<component>.json`
+   ```json
+   {
+     "btn": {
+       "appearances": {
+         "dark-btn": {
+           "mapping": {
+             "background": { "value": "{color.black.@.value}" },
+             "color": { "value": "{color.background.@.value}" },
+             "font-size": { "value": "{label.large.font-size.value}" },
+             "border": { "color": { "value": "{color.surface.container.highest.@.value}" } },
+             "radius": { "value": "{radius.sm.value}" },
+             "padding": { "value": "{space.0.value} {space.6.value}" },
+             "states": {
+               "hover": { "state": { "layer": { "opacity": { "value": "{opacity.hover.value}" } } } },
+               "disabled": { "opacity": { "value": "0.38" }, "cursor": { "value": "not-allowed" } }
+             }
+           },
+           "meta": { "source": "user" }
+         }
+       }
+     }
+   }
+   ```
+
+   **Output 2 — CSS class rules in app.override.css:**
+   ```css
+   .wm-app .btn-dark-btn {
+     --wm-btn-background: var(--wm-color-black);
+     --wm-btn-color: var(--wm-color-background);
+     --wm-btn-font-size: var(--wm-label-large-font-size);
+     --wm-btn-font-family: var(--wm-label-large-font-family);
+     --wm-btn-font-weight: var(--wm-label-large-font-weight);
+     --wm-btn-line-height: var(--wm-label-large-line-height);
+     --wm-btn-letter-spacing: var(--wm-label-large-letter-spacing);
+     --wm-btn-text-transform: none;
+     --wm-btn-border-color: var(--wm-color-surface-container-highest);
+     --wm-btn-cursor: pointer;
+     --wm-btn-radius: var(--wm-radius-sm);
+     --wm-btn-padding: var(--wm-space-0) var(--wm-space-6);
+     --wm-btn-min-width: auto;
+     --wm-btn-min-height: var(--wm-space-10);
+     --wm-btn-gap: var(--wm-space-2);
+     --wm-btn-shadow: none;
+     --wm-btn-icon-size: var(--wm-icon-size-md);
+     --wm-btn-state-layer-color: var(--wm-color-on-surface);
+   }
+
+   .wm-app .btn-dark-btn:hover,
+   .wm-app .btn-dark-btn:hover::before,
+   .wm-app .btn-dark-btn.hover::before {
+     --wm-btn-state-layer-opacity: var(--wm-opacity-hover);
+   }
+
+   .wm-app .btn-dark-btn:focus,
+   .wm-app .btn-dark-btn:focus::before,
+   .wm-app .btn-dark-btn.focus::before {
+     --wm-btn-state-layer-opacity: var(--wm-opacity-focus);
+   }
+
+   .wm-app .btn-dark-btn:active,
+   .wm-app .btn-dark-btn:active::before,
+   .wm-app .btn-dark-btn:active:hover::before,
+   .wm-app .btn-dark-btn:active.focus::before {
+     --wm-btn-state-layer-opacity: var(--wm-opacity-active);
+   }
+
+   .wm-app .btn-dark-btn[disabled] {
+     --wm-btn-color: var(--wm-color-on-surface);
+     --wm-btn-background: var(--wm-color-surface-container-highest);
+     --wm-btn-border-color: var(--wm-color-surface-container-highest);
+     --wm-btn-opacity: 0.38;
+     --wm-btn-shadow: none;
+     --wm-btn-cursor: not-allowed;
+   }
+   ```
+
+4. **Token reference mapping**:
+   - Component property → custom property: `background: #000` → `--wm-btn-background: var(--wm-color-black)`
+   - States: hover, focus, active, disabled with corresponding pseudo-classes
+   - Colors → `var(--wm-color-<semantic-name>)` (e.g., `var(--wm-color-primary)`)
+   - Spacing → `var(--wm-space-<size>)` (e.g., `var(--wm-space-2)`)
+   - Typography → `var(--wm-label-<scale>-font-size)`, etc.
+   - Radius → `var(--wm-radius-<size>)` (e.g., `var(--wm-radius-md)`)
+
+5. **Report extracted variants**:
+   ```
+   Component Variants Extracted (optional):
+     ✓ button — 3 variants found: (dark-btn, outline-btn, ghost-btn)
+     ✓ input — 2 variants found: (error-input, filled-input)
+     ✓ navigation — 1 variant found: (active-nav)
+   
+   Output Files Created:
+     JSON:
+       • src/main/webapp/design-tokens/overrides/components/button/button.json
+       • src/main/webapp/design-tokens/overrides/components/input/input.json
+       • src/main/webapp/design-tokens/overrides/components/navigation/navigation.json
+     
+     CSS (appended to app.override.css):
+       • .wm-app .btn-dark-btn { --wm-btn-*: ... }
+       • .wm-app .btn-dark-btn:hover { ... }
+       • .wm-app .input-error { --wm-input-*: ... }
+       • .wm-app .nav-item.active { --wm-nav-*: ... }
+   ```
 
 ---
 
