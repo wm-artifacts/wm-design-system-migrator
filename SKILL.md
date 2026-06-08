@@ -368,7 +368,7 @@ must happen AFTER PHASE 3 (theme token extraction) to preserve the source files.
 Use the **Read** tool to load `../wm-component-conversion/SKILL.md` (sibling skill folder).
 **Do NOT use the Skill tool** — read the file directly and execute its steps inline.
 
-Execute **STEP 1 and STEP 3** from that file inline, using the
+Execute **STEP 1, STEP 3, and STEP 4** from that file inline, using the
 variables already resolved in STEP 0 above:
 
 | Variable | Source |
@@ -384,11 +384,12 @@ variables already resolved in STEP 0 above:
 |---|---|
 | STEP 0 — Parse arguments | Done in STEP 0 above |
 | STEP 2 — Show summary + confirm | Autolayout scope shown in STEP 2 above; user confirmed in STEP 0 |
-| STEP 3b — Generate ZIP | Handled by PHASE 3 of this orchestrator |
-| STEP 4 — Print summary | Handled by STEP 4 of this orchestrator |
+| STEP 5 — Generate ZIP | Handled by PHASE 4 of this orchestrator |
+| STEP 6 — Print summary | Handled by STEP 5 of this orchestrator |
 
-Execute **STEP 1** (validate project and discover target HTML files) and
-**STEP 3** (write the conversion script, run it, delete it). Parse the JSON
+Execute **STEP 1** (validate project and discover target HTML files),
+**STEP 3** (component attribute & variant conversion — opt-in, ask user), and
+**STEP 4** (write the grid conversion script, run it, delete it). Parse the JSON
 output to build the per-page counts for the unified summary.
 
 ---
@@ -494,7 +495,7 @@ test ! -d "<TARGET_DIR>/src/main/webapp/themes" && echo "OK" || echo "FAILED"
 
 ---
 
-## PHASE 5 — Packaging (always runs)
+## PHASE 4 — Packaging (always runs)
 
 Output ZIP is always named `<SOURCE_ZIP_BASENAME>_conv_ds.zip` and placed in the same
 directory as the source ZIP (or `TARGET_DIR`'s parent). Files are zipped from inside
