@@ -2,7 +2,24 @@
 
 ## Overview
 
-Several container-type components require class additions and variant assignments for design system compliance. The `<wm-container>` element is handled by the Data rules (execution order 1); this rule covers the remaining container widgets: Accordion, Panel, Tile, and Wizard.
+Several container-type components require class additions and variant assignments for design system compliance. This rule covers: Container, Accordion, Panel, Tile, Wizard, and Tabs.
+
+---
+
+## Container (`<wm-container>`)
+
+- **NDS Pattern:** `<wm-container name="container1"></wm-container>`
+- **DS Pattern:** `<wm-container direction="row" alignment="top-left" gap="4" width="fill" name="container1" class="app-container-default" variant="default"></wm-container>`
+
+### Action
+
+1. Add flex attributes (if not already present):
+   - `direction="row"`
+   - `alignment="top-left"`
+   - `gap="4"`
+   - `width="fill"`
+2. Add `class="app-container-default"` (append to any existing classes).
+3. Add `variant="default"`.
 
 ---
 
@@ -56,7 +73,7 @@ Several container-type components require class additions and variant assignment
 1. If the class attribute contains `"number"`, append `"wizard-number"` to the class.
 2. Add `variant="number"`.
 
-> **Note:** `<wm-button>` elements inside wizard actions are upgraded by the Basic rules. `<wm-container>` elements inside wizard actions are upgraded by the Data rules.
+> **Note:** `<wm-button>` elements inside wizard actions are upgraded by the Basic rules. `<wm-container>` elements inside wizard actions are upgraded by this rule.
 
 ---
 
@@ -78,15 +95,28 @@ Use `parse_attrs`, `build_attrs`, and `merge_class` — they are injected by the
 
 ```python
 # Execution order: 3
-# Components: wm-accordion, wm-panel, wm-tile, wm-wizard
+# Components: wm-container, wm-accordion, wm-panel, wm-tile, wm-wizard
 
 def apply_containers_rules(text):
     counts = {
+        'wm_container': 0,
         'wm_accordion': 0,
         'wm_panel': 0,
         'wm_tile': 0,
         'wm_wizard': 0,
     }
+
+    def patch_container(m):
+        attrs = parse_attrs(m.group(1))
+        if 'variant' not in attrs:
+            attrs.setdefault('direction', 'row')
+            attrs.setdefault('alignment', 'top-left')
+            attrs.setdefault('gap', '4')
+            attrs.setdefault('width', 'fill')
+            attrs['class'] = merge_class(attrs.get('class', ''), 'app-container-default')
+            attrs['variant'] = 'default'
+            counts['wm_container'] += 1
+        return f'<wm-container {build_attrs(attrs)}>'
 
     def patch_accordion(m):
         attrs = parse_attrs(m.group(1))
@@ -122,6 +152,7 @@ def apply_containers_rules(text):
                 counts['wm_wizard'] += 1
         return f'<wm-wizard {build_attrs(attrs)}>'
 
+    text = re.sub(r'<wm-container\b([^>]*)>', patch_container, text)
     text = re.sub(r'<wm-accordion\b([^>]*)>', patch_accordion, text)
     # Use (?!-) to avoid matching wm-panel-footer
     text = re.sub(r'<wm-panel\b(?!-)([^>]*)>', patch_panel, text)
