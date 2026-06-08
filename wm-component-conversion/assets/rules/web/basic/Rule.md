@@ -60,6 +60,123 @@ Add specific Font Awesome size classes and map the variant to match:
 
 ---
 
+## Message (`<wm-message>`)
+
+- **NDS Pattern:** `<wm-message name="message1"></wm-message>`
+- **DS Pattern:** `<wm-message name="message1" type="success" class="app-message alert-success" variant="filled:success"></wm-message>`
+
+### Action
+
+1. If `type` is not set, default to `"success"`.
+2. Add `class="app-message alert-{type}"` based on the resolved type value.
+3. Add `variant="filled:{type}"`.
+
+---
+
+## Progress Bar (`<wm-progress-bar>`)
+
+- **NDS Pattern:** `<wm-progress-bar datavalue="30" name="progress_bar1"></wm-progress-bar>`
+- **DS Pattern:** `<wm-progress-bar datavalue="30" name="progress_bar1" class="app-progress progress-bar-default" variant="filled:default"></wm-progress-bar>`
+
+### Action
+
+1. Add `class="app-progress progress-bar-default"` (append to any existing classes).
+2. Add `variant="filled:default"`.
+
+---
+
+## Progress Circle (`<wm-progress-circle>`)
+
+- **NDS Pattern:** `<wm-progress-circle width="150px" height="150px" name="progress_circle1"></wm-progress-circle>`
+- **DS Pattern:** `<wm-progress-circle width="150px" height="150px" name="progress_circle1" class="app-progress circle progress-circle-default" variant="filled:default"></wm-progress-circle>`
+
+### Action
+
+1. Add `class="app-progress circle progress-circle-default"` (append to any existing classes).
+2. Add `variant="filled:default"`.
+
+---
+
+## Button Group (`<wm-buttongroup>`)
+
+- **NDS Pattern:** `<wm-buttongroup name="buttongroup1"></wm-buttongroup>` with inner `<wm-button class="btn-default" ...></wm-button>` children.
+- **DS Pattern:** The `<wm-buttongroup>` wrapper is unchanged. Each inner `<wm-button>` gains `btn-filled` and `variant` via the Buttons rule above.
+- **Action:** None required on the `<wm-buttongroup>` tag itself — inner buttons are patched automatically.
+
+---
+
+## Anchor (`<wm-anchor>`)
+
+- **NDS Pattern:** `<wm-anchor margin="unset 0.5em" name="anchor1"></wm-anchor>`
+- **DS Pattern:** Identical — no structural change required.
+- **Action:** None.
+
+---
+
+## Audio (`<wm-audio>`)
+
+- **NDS Pattern:** `<wm-audio controls="controls" audiopreload="none" name="audio1"></wm-audio>`
+- **DS Pattern:** Identical — no structural change required.
+- **Action:** None.
+
+---
+
+## HTML (`<wm-html>`)
+
+- **NDS Pattern:** `<wm-html name="html1"></wm-html>`
+- **DS Pattern:** Identical — no structural change required.
+- **Action:** None.
+
+---
+
+## Iframe (`<wm-iframe>`)
+
+- **NDS Pattern:** `<wm-iframe name="iframe1"></wm-iframe>`
+- **DS Pattern:** Identical — no structural change required.
+- **Action:** None.
+
+---
+
+## Rich Text Editor (`<wm-richtexteditor>`)
+
+- **NDS Pattern:** `<wm-richtexteditor name="richtexteditor1"></wm-richtexteditor>`
+- **DS Pattern:** Identical — no structural change required.
+- **Action:** None.
+
+---
+
+## Search (`<wm-search>`)
+
+- **NDS Pattern:** `<wm-search name="search1"></wm-search>`
+- **DS Pattern:** Identical — no structural change required.
+- **Action:** None.
+
+---
+
+## Spinner (`<wm-spinner>`)
+
+- **NDS Pattern:** `<wm-spinner show="true" name="spinner1"></wm-spinner>`
+- **DS Pattern:** Identical — no structural change required.
+- **Action:** None.
+
+---
+
+## Tree (`<wm-tree>`)
+
+- **NDS Pattern:** `<wm-tree name="tree1"></wm-tree>`
+- **DS Pattern:** Identical — no structural change required.
+- **Action:** None.
+
+---
+
+## Video (`<wm-video>`)
+
+- **NDS Pattern:** `<wm-video controls="controls" videopreload="none" name="video1"></wm-video>`
+- **DS Pattern:** Identical — no structural change required.
+- **Action:** None.
+
+---
+
 ## Script
 
 Extracted by the skill assembler into `wm_comp_conv_tmp.py`. Edit this block to add or change
@@ -71,7 +188,8 @@ Module-level constants defined here (e.g. `BTN_VARIANT_MAP`) are included verbat
 
 ```python
 # Execution order: 2
-# Components: wm-button, wm-form-action, wm-label, wm-icon, wm-picture
+# Components: wm-button, wm-form-action, wm-label, wm-icon, wm-picture,
+#             wm-message, wm-progress-bar, wm-progress-circle
 
 BTN_VARIANT_MAP = {
     'btn-default': 'filled:default',
@@ -84,7 +202,15 @@ BTN_VARIANT_MAP = {
 LABEL_SIZES = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'lead']
 
 def apply_basic_rules(text):
-    counts = {'button': 0, 'label': 0, 'icon': 0, 'picture': 0}
+    counts = {
+        'button': 0,
+        'label': 0,
+        'icon': 0,
+        'picture': 0,
+        'wm_message': 0,
+        'wm_progress_bar': 0,
+        'wm_progress_circle': 0,
+    }
 
     def patch_button(m):
         tag_name, attr_str = m.group(1), m.group(2)
@@ -121,9 +247,38 @@ def apply_basic_rules(text):
         counts['picture'] += 1
         return f'<wm-picture {build_attrs(attrs)}>'
 
+    def patch_message(m):
+        attrs = parse_attrs(m.group(1))
+        if 'variant' not in attrs:
+            msg_type = attrs.get('type', 'success')
+            attrs.setdefault('type', msg_type)
+            attrs['class'] = merge_class(attrs.get('class', ''), f'app-message alert-{msg_type}')
+            attrs['variant'] = f'filled:{msg_type}'
+            counts['wm_message'] += 1
+        return f'<wm-message {build_attrs(attrs)}>'
+
+    def patch_progress_bar(m):
+        attrs = parse_attrs(m.group(1))
+        if 'variant' not in attrs:
+            attrs['class'] = merge_class(attrs.get('class', ''), 'app-progress progress-bar-default')
+            attrs['variant'] = 'filled:default'
+            counts['wm_progress_bar'] += 1
+        return f'<wm-progress-bar {build_attrs(attrs)}>'
+
+    def patch_progress_circle(m):
+        attrs = parse_attrs(m.group(1))
+        if 'variant' not in attrs:
+            attrs['class'] = merge_class(attrs.get('class', ''), 'app-progress circle progress-circle-default')
+            attrs['variant'] = 'filled:default'
+            counts['wm_progress_circle'] += 1
+        return f'<wm-progress-circle {build_attrs(attrs)}>'
+
     text = re.sub(r'<(wm-button|wm-form-action)\b([^>]*)>', patch_button, text)
     text = re.sub(r'<wm-label\b([^>]*)>', patch_label, text)
     text = re.sub(r'<wm-icon\b([^>]*)>', patch_icon, text)
     text = re.sub(r'<wm-picture\b([^>]*?)>', patch_picture, text)
+    text = re.sub(r'<wm-message\b([^>]*)>', patch_message, text)
+    text = re.sub(r'<wm-progress-bar\b([^>]*)>', patch_progress_bar, text)
+    text = re.sub(r'<wm-progress-circle\b([^>]*)>', patch_progress_circle, text)
     return text, counts
 ```
