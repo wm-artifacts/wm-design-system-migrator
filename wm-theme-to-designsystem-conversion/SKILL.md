@@ -1,181 +1,198 @@
 ---
 name: wm-theme-to-designsystem-conversion
-description: Extract global design tokens (typography, colors, spacing) from legacy theme style.css and merge with foundation.css, outputting to app.override.css for design system theme customization. Use this skill to migrate old theme configurations to the new design-token-based system during a DesignSystem template migration.
+description: Extract global design tokens (typography, colors, spacing) from legacy theme style.css using @wavemaker/foundation-css package reference, outputting to app.override.css for design system theme customization. Use this skill to migrate old theme configurations to the new design-token-based system during a DesignSystem template migration.
 metadata:
-  version: 0.1.0
+  version: 0.2.0
 ---
 
 # /wm-theme-to-designsystem-conversion — Legacy Theme → Design Tokens Converter
 
-Convert legacy custom theme styles from `style.css` into design tokens that override
-the foundation theme. Extracts global tokens for typography, colors, and spacing, then
-writes them to `src/main/webapp/design-tokens/app.override.css`.
+Convert legacy custom theme styles from `style.css` and `app.css` into design tokens and component variants.
+
+**Output:**
+- **Global tokens** → `src/main/webapp/design-tokens/app.override.css`
+- **Component variants** → `src/main/webapp/design-tokens/overrides/components/<component>/<component>.json`
+- **CSS rules** → appended to `app.override.css`
 
 ---
 
-## Invocation
+## Quick Start
 
+```bash
+# Basic extraction
+/wm-theme-to-designsystem-conversion /path/to/project default
+
+# Preview without writing files
+/wm-theme-to-designsystem-conversion /path/to/project default --dry-run
+
+# Show detailed logs
+/wm-theme-to-designsystem-conversion /path/to/project default --verbose
 ```
-/wm-theme-to-designsystem-conversion <project_path> <theme_name>
-/wm-theme-to-designsystem-conversion <project_path> <theme_name> --dry-run
-/wm-theme-to-designsystem-conversion <project_path> <theme_name> --verbose
-```
+
+---
+
+## Invocation Reference
 
 | Argument | Required | Description |
 |---|---|---|
-| `<project_path>` | Yes | Absolute path to the WaveMaker project |
-| `<theme_name>` | Yes | Theme folder name (e.g., `default`, `light`, `custom`) |
-| `--dry-run` | No | Preview what would be extracted — no files are written |
-| `--verbose` | No | Show detailed extraction logs and token categorization |
+| `<project_path>` | ✅ Yes | Absolute path to WaveMaker project |
+| `<theme_name>` | ✅ Yes | Theme folder name (e.g., `default`, `light`, `custom`) |
+| `--dry-run` | ❌ No | Preview extraction — no files written |
+| `--verbose` | ❌ No | Show detailed extraction logs |
 
 ---
 
-## Execution — follow every step in order
+## Execution Flow
 
-### STEP 0 · Parse arguments from $ARGUMENTS
+### STEP 0 · Parse Arguments
 
-Extract:
-- `PROJECT_DIR` — first positional value
-- `THEME_NAME` — second positional value
-- `DRY_RUN` — `true` if `--dry-run` is present
-- `VERBOSE` — `true` if `--verbose` is present
+**Extract from `$ARGUMENTS`:**
 
-If either `PROJECT_DIR` or `THEME_NAME` is missing, ask: *"Please provide the project path and theme name, e.g., `/wm-theme-to-designsystem-conversion /path/to/project default`"*
+| Variable | Source | Required | Example |
+|---|---|---|---|
+| `PROJECT_DIR` | 1st positional | ✅ Yes | `/Users/dev/my-project` |
+| `THEME_NAME` | 2nd positional | ✅ Yes | `default` |
+| `DRY_RUN` | `--dry-run` flag | ❌ No | `false` (default) |
+| `VERBOSE` | `--verbose` flag | ❌ No | `false` (default) |
 
----
-
-### STEP 1 · Validate project and theme
-
-Check:
-1. `<PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/` exists
-   - If missing → abort: *"Theme directory not found: `<PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/`"*
-
-2. `<PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/style.css` exists
-   - If missing → abort: *"No style.css found in theme folder."*
-
-3. `<PROJECT_DIR>/src/main/webapp/` exists (for output path validation)
-   - If missing → abort: *"Not a valid WaveMaker project — webapp directory not found."*
+**If missing arguments:**
+```
+❌ "Please provide the project path and theme name, e.g., 
+    /wm-theme-to-designsystem-conversion /path/to/project default"
+```
 
 ---
 
-### STEP 2 · Read foundation.css (reference) and legacy style.css
+### STEP 1 · Validate Project & Theme
 
-**Foundation CSS location (reference file):** `../assets/foundation.css`
-(This is the standard design system base token file with `:root { --wm-*: ... }` variables.
-It's bundled with the wm-theme-conv skill as a reference for token mapping, NOT from the project.)
+**Check existence of these paths:**
 
-**Legacy CSS location (from project):** `<PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/style.css`
+| Path | Status | Error Message |
+|---|---|---|
+| `<PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/` | MUST EXIST | "Theme directory not found: `<PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/`" |
+| `<PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/style.css` | MUST EXIST | "No style.css found in theme folder." |
+| `<PROJECT_DIR>/src/main/webapp/` | MUST EXIST | "Not a valid WaveMaker project — webapp directory not found." |
 
-Read both files as text. Foundation.css is used as a reference to identify semantic token names
-and match legacy theme tokens against foundation tokens for intelligent override mapping.
+**If all checks pass:** → Continue to STEP 2
 
 ---
 
-### STEP 3 · Extract tokens from style.css
+### STEP 2 · Foundation CSS Package Setup
 
-Parse style.css to identify and extract design tokens. Use **TWO extraction strategies**:
+**The `@wavemaker/foundation-css` package is required for token mapping and component detection.**
+
+#### 2.1 — User Prompt
+
+```
+The @wavemaker/foundation-css package is required for token mapping and component detection.
+
+Do you want to:
+  [1] Check and install (if missing) — only install if not found
+  [2] Reinstall/Update — always download latest version
+  [3] Skip — assume package is already installed
+
+→ User selects option
+```
+
+#### 2.2 — Installation Based on User Choice
+
+| User Choice | Action | Behavior |
+|---|---|---|
+| **[1] Check & Install** | Look for package | If exists → skip installation<br>If missing → install |
+| **[2] Reinstall/Update** | Always install | `npm install @wavemaker/foundation-css --prefix <SKILL_ASSETS>/` |
+| **[3] Skip** | Assume installed | If missing → fail at STEP 2b with error |
+
+**Installation command:**
+```bash
+npm install @wavemaker/foundation-css --prefix <SKILL_ASSETS>/
+```
+
+#### 2.3 — Verify Installation
+
+| Check | Pass | Fail |
+|---|---|---|
+| File exists: `<SKILL_ASSETS>/node_modules/@wavemaker/foundation-css/foundation/foundation.css` | Continue ✅ | Abort: "Failed to install @wavemaker/foundation-css" ❌ |
+
+---
+
+### STEP 2b · Build Component Selector Map
+
+**Build lookup map for detecting WaveMaker components in CSS rules.**
+
+Source: `<SKILL_ASSETS>/node_modules/@wavemaker/foundation-css/src/tokens/web/components/`
+
+**Supported Basic Components:**
+
+| Component | Class Names | Example |
+|---|---|---|
+| **button** | `.btn`, `.app-button` | `.dark-btn.app-button` |
+| **label** | `.label`, `.app-label` | `.text-ellipsis.app-label` |
+| **message** | `.message`, `.app-message` | `.success-alert.app-message` |
+| **search** | `.search`, `.app-search` | `.search-inline.app-search` |
+| **progress** | `.progress`, `.app-progress` | `.striped.app-progress` |
+| **progress-circle** | `.progress-circle`, `.app-progress-circle` | `.large.app-progress-circle` |
+| **icon** | `.icon`, `.app-icon` | `.icon-sm.app-icon` |
+| **anchor** | `.anchor`, `.app-anchor`, `.link` | `.external.app-anchor` |
+| **picture** | `.picture`, `.app-picture`, `.img` | `.mobile-card.app-picture` |
+| **bottomsheet** | `.bottomsheet`, `.app-bottomsheet` | `.custom.app-bottomsheet` |
+| **spinner** | `.spinner`, `.app-spinner` | `.large.app-spinner` |
+| **skeleton** | `.skeleton`, `.app-skeleton` | `.wave.app-skeleton` |
+
+**Store as:** `COMPONENT_SELECTOR_MAP` (used in STEP 8)
+
+---
+
+### STEP 3 · Extract Tokens from style.css
+
+**Two extraction strategies:**
 
 #### Strategy 1: CSS Variables in `:root {}`
 
-If `:root { --var: value; }` exists, extract CSS variable declarations:
-- Variable name (e.g., `--brand-primary`)
-- Variable value (e.g., `#FF7250`)
-- Category (typography / color / spacing based on name patterns)
+| Element | Extract | Example |
+|---|---|---|
+| Variable name | `--var-name` | `--brand-primary` |
+| Variable value | `value` | `#FF7250` |
+| Category | Auto-detect | color / typography / spacing |
 
-#### Strategy 2: Actual CSS Property Values (fallback)
+**Patterns for auto-detection:**
 
-If `:root` variables are minimal or absent, **extract actual CSS property values** from the stylesheet:
+| Pattern | Category | Example |
+|---|---|---|
+| `*color*`, `*-bg*`, `*-text*`, `*-border*` | **Color** | `--my-primary`, `--bg-dark` |
+| `*font*`, `*size*`, `*weight*`, `*height*`, `*spacing*` | **Typography** | `--heading-font`, `--body-size` |
+| `*gap*`, `*margin*`, `*padding*`, `*space*`, `*-size*` | **Spacing** | `--gap-base`, `--padding-lg` |
 
-**Colors:**
-- Scan all selectors for `color:`, `background-color:`, `border-color:` properties
-- Extract hex (`#FF7250`), rgb (`rgb(255, 114, 80)`), named colors
-- Map to semantic foundation names:
-  - Primary colors → `--wm-color-primary`
-  - Secondary colors → `--wm-color-secondary`
-  - Error/danger colors → `--wm-color-error`
-  - Success colors → `--wm-color-success`
-  - Warning colors → `--wm-color-warning`
-  - Info colors → `--wm-color-info`
-  - Neutral/gray colors → `--wm-color-surface`, `--wm-color-on-surface`
-  - Custom colors → `--wm-<custom-name>` (with `--wm-` prefix)
+#### Strategy 2: CSS Property Values (Fallback)
 
-**Typography:**
-- Scan for `font-family:`, `font-size:`, `font-weight:`, `line-height:`, `letter-spacing:`
-- Extract from heading selectors (h1, h2, h3, .heading, .title)
-- Extract from body text selectors (body, p, .text, .label)
-- Map to semantic foundation names:
-  - Primary font family → `--wm-font-family-brand`
-  - Fallback font family → `--wm-font-family-plain`
-  - H1 size → `--wm-h1-font-size`, `--wm-h1-font-weight`, `--wm-h1-line-height`
-  - Body size → `--wm-font-size-base`, `--wm-font-weight-normal`
-  - Custom typography → `--wm-<custom-name>`
+**If `:root` variables are minimal (< 10), extract actual CSS property values:**
 
-**Spacing:**
-- Scan for `padding:`, `margin:`, `gap:`, `border-radius:`, `width:`, `height:` properties
-- Extract numeric values with units (px, em, rem, %)
-- Map to semantic foundation names:
-  - Base gaps → `--wm-gap-base`
-  - Base margins → `--wm-margin-base`
-  - Base padding → `--wm-padding-base`, `--wm-padding-vertical-base`, `--wm-padding-horizontal-base`
-  - Border radius → `--wm-border-radius-sm`, `--wm-border-radius-md`, `--wm-border-radius-lg`
-  - Component dimensions → `--wm-<component>-<dimension>` (e.g., `--wm-input-height`, `--wm-header-padding`)
-
-#### Extraction Priority
-
-1. **Prefer existing `:root` CSS variables** if present (explicit intent)
-2. **Fall back to actual property values** if `:root` has fewer than 10 variables
-3. **Combine both** if both exist (CSS variables + additional properties)
+| Property | Pattern | Example |
+|---|---|---|
+| Colors | `color:`, `background-color:`, `border-color:` | `#FF7250`, `rgb(255, 114, 80)` |
+| Typography | `font-family:`, `font-size:`, `font-weight:`, `line-height:` | `Arial, sans-serif`, `32px`, `700` |
+| Spacing | `padding:`, `margin:`, `gap:`, `border-radius:`, `width:`, `height:` | `8px`, `16px`, `4px` |
 
 #### Output Structure
-
-Store in a structured object with foundation naming applied:
 
 ```python
 tokens = {
     'typography': [
-        {'name': '--wm-font-family-brand', 'value': 'Arial, sans-serif', 'source': 'style.css'},
-        {'name': '--wm-h1-font-size', 'value': '32px', 'source': 'h1 selector'},
-        {'name': '--wm-h1-font-weight', 'value': '700', 'source': 'h1 selector'},
-        ...
+        {'name': '--wm-font-family-brand', 'value': 'Arial, sans-serif', 'source': 'style.css'}
     ],
     'colors': [
-        {'name': '--wm-color-primary', 'value': '#FF7250', 'source': 'style.css or .primary selector'},
-        {'name': '--wm-color-error', 'value': '#F44336', 'source': '.error selector'},
-        ...
+        {'name': '--wm-color-primary', 'value': '#FF7250', 'source': 'h1 selector'}
     ],
     'spacing': [
-        {'name': '--wm-gap-base', 'value': '8px', 'source': 'style.css or .gap selector'},
-        {'name': '--wm-padding-base', 'value': '16px', 'source': 'body selector'},
-        {'name': '--wm-border-radius-md', 'value': '8px', 'source': '.rounded-md selector'},
-        ...
-    ],
+        {'name': '--wm-gap-base', 'value': '8px', 'source': 'style.css'}
+    ]
 }
 ```
 
-#### Semantic Mapping Rules
-
-| Legacy/Found Value | Foundation Token | Rule |
-|---|---|---|
-| Primary brand color | `--wm-color-primary` | Most prominent color in design |
-| Secondary brand color | `--wm-color-secondary` | Second most prominent |
-| Error/danger color | `--wm-color-error` | Red/danger tones |
-| Success/check color | `--wm-color-success` | Green/success tones |
-| Warning color | `--wm-color-warning` | Yellow/orange warning tones |
-| Info/blue color | `--wm-color-info` | Blue/info tones |
-| Primary font family | `--wm-font-family-brand` | Main heading font |
-| Fallback font family | `--wm-font-family-plain` | Body/system font |
-| 8px spacing | `--wm-gap-base` | Base unit for gaps |
-| 4px spacing | `--wm-margin-base` | Base unit for margins |
-| 4-8px border radius | `--wm-border-radius-sm` | Small radius |
-| 8px border radius | `--wm-border-radius-md` | Medium radius |
-| 16px+ border radius | `--wm-border-radius-lg` | Large radius |
-
 ---
 
-### STEP 3b · Ask user about font family customization
+### STEP 3b · Ask User About Custom Font
 
-If typography tokens include a **custom font family** (e.g., `--my-font-family` or `--font-family-brand`), 
-prompt the user:
+**If custom font family found:**
 
 ```
 Found custom font family in theme:
@@ -185,554 +202,1028 @@ Do you want to use this font family in the design system?
   [Y/n]
 ```
 
-**If user answers YES (Y or Enter):**
-1. Store the font family value for later import in STEP 5
-2. Plan to add appropriate `@import` or `@font-face` declaration to app.override.css
-
-**If user answers NO (n):**
-1. Skip font family customization
-2. Use foundation defaults (--wm-font-family-brand and --wm-font-family-plain)
+| Answer | Action |
+|---|---|
+| **Y** (or Enter) | Store font for import in STEP 5 |
+| **n** | Skip font customization |
 
 ---
 
-### STEP 4 · Match against foundation tokens (reference)
+### STEP 4 · Match Against Foundation Tokens
 
-For each extracted token from style.css, check if a corresponding foundation variable exists
-in the reference foundation.css:
+**For each extracted token, check if foundation equivalent exists:**
 
-- **Match rule**: If foundation has a token with a "similar" semantic purpose (e.g., both are primary colors, both are heading fonts), flag it as "overrides foundation"
-- **No match**: Flag as "new custom token"
+| Legacy Token | Foundation Match | Action |
+|---|---|---|
+| `--my-primary-color: #FF7250` | `--wm-color-primary` | Map to foundation name |
+| `--custom-accent: #E91E63` | (no match) | Keep as custom token |
 
-Foundation.css is the **reference standard** bundled with the migration tool. It defines the semantic
-token names that all DesignSystem projects use. Legacy theme tokens are mapped to these names.
-
-Example:
-```
---my-primary-color: #FF7250
-  ↓ (matches semantic purpose in reference foundation.css)
-  foundation: --wm-color-primary: #FF7250  ← map to this foundation name
-  
---custom-accent: #E91E63
-  ↓ (no foundation match in reference)
-  custom-only: new token (keep original name)
-```
+**Output:** Categorized token list with "foundation override" or "custom-only" flags
 
 ---
 
 ### STEP 5 · Build override CSS
 
-Write to `<PROJECT_DIR>/src/main/webapp/design-tokens/app.override.css`:
+**Output file:** `<PROJECT_DIR>/src/main/webapp/design-tokens/app.override.css`
 
-**If user approved custom font family in STEP 3b:**
-
-Add font import statements at the top of the file. Determine import method based on font value:
-
-1. **If font is a Google Font** (e.g., `'Roboto', sans-serif`):
-   ```css
-   @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&display=swap');
-   ```
-
-2. **If font is a web font URL** (e.g., `url('...')`):
-   Use as-is or wrap in `@font-face` if needed.
-
-3. **If font is a system font** (e.g., `'Segoe UI', Tahoma, sans-serif`):
-   No import needed; just use in variable.
-
-The output file structure:
+#### Structure
 
 ```css
 /**
  * Design Token Overrides — Migrated from legacy theme
  * Theme: <THEME_NAME>
  * Source: <PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/style.css
- * 
- * These tokens override foundation.css values.
- * Foundation tokens are defined in src/main/webapp/theme/<THEME_NAME>/foundation.css
  */
 
-/* Font imports (if custom font approved by user) */
-@import url('https://fonts.googleapis.com/css2?family=...');
+/* Font imports (if user approved custom font) */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@...');
 
 :root {
   /* Typography Overrides */
-  <typography tokens here, one per line>
-
+  --wm-font-family-brand: 'Roboto', sans-serif;
+  --wm-h1-font-size: 32px;
+  
   /* Color Overrides */
-  <color tokens here, one per line>
-
+  --wm-color-primary: #FF7250;
+  --wm-color-error: #F44336;
+  
   /* Spacing Overrides */
-  <spacing tokens here, one per line>
-}
-
-/* Custom tokens (no foundation equivalent) */
-:root {
-  <custom tokens here if any>
+  --wm-gap-base: 8px;
+  --wm-padding-base: 16px;
 }
 ```
 
-**Rules for writing tokens:**
-1. If a token name from style.css matches a foundation semantic name (e.g., `--my-primary` and `--wm-color-primary`), **map it to the foundation name**:
-   ```css
-   /* Original: --my-primary-color: #FF7250; */
-   --wm-color-primary: #FF7250;  /* Overridden from legacy theme */
-   ```
+#### Writing Rules
 
-2. If a token has no foundation equivalent, **keep the original name prefixed**:
-   ```css
-   --my-custom-accent: #E91E63;  /* Custom token */
-   ```
-
-3. **For font-family tokens that user approved**: Use the extracted font family value:
-   ```css
-   /* Original: --font-family-brand: 'Roboto', sans-serif; */
-   --wm-font-family-brand: 'Roboto', sans-serif;  /* Custom font from legacy theme */
-   ```
-
-4. Add comments above token groups (Typography, Colors, Spacing, Fonts) for clarity.
-
-5. Sort tokens alphabetically within each category.
-
-6. **CRITICAL: Update variable references** — When a token value references another CSS variable (e.g., `var(--brand-primary)`), **always update the reference to point to the new mapped token name**:
-   ```css
-   /* WRONG - references old token name: */
-   --wm-header-active-text-color: var(--brand-primary);
-   
-   /* CORRECT - references mapped token name: */
-   --wm-header-active-text-color: var(--wm-color-primary);
-   ```
-   This ensures all references resolve to the new DesignSystem naming scheme and eliminates dead reference chains.
-
-7. **CRITICAL: Eliminate duplicate tokens** — Do NOT emit the same token name twice. When processing style.css:
-   - Track all emitted token names as you build the output
-   - If a token name already appears in the output, skip it (keep the first occurrence)
-   - Report duplicates found to the user for awareness
-   ```css
-   /* WRONG - duplicates: */
-   --wm-color-primary: #2294ef;
-   --wm-color-primary: color-mix(in srgb, var(--brand-primary), var(--light-mixer) 9%);
-   
-   /* CORRECT - keep only one: */
-   --wm-color-primary: #2294ef;  /* from --brand-primary */
-   ```
-
-8. **CRITICAL: Use mapped references for dependent tokens** — For tokens whose values depend on other tokens, use the mapped destination name:
-   ```css
-   /* WRONG - references original token before mapping: */
-   --wm-btn-primary-hover: color-mix(in srgb, var(--brand-primary), var(--light-mixer) 9%);
-   
-   /* CORRECT - uses mapped token for clarity: */
-   --wm-btn-primary-hover: color-mix(in srgb, var(--wm-color-primary), var(--wm-light-mixer) 9%);
-   ```
+| Rule | Correct | Wrong |
+|---|---|---|
+| **Map to foundation names** | `--wm-color-primary: #FF7250;` | `--my-primary: #FF7250;` |
+| **Update var() references** | `var(--wm-color-primary)` | `var(--brand-primary)` |
+| **No duplicates** | Keep first occurrence | Emit same token twice |
+| **Sort tokens** | Alphabetically per category | Random order |
 
 ---
 
-### STEP 6 · Create design-tokens folder if needed
+### STEP 6 · Create design-tokens folder
 
-If `<PROJECT_DIR>/src/main/webapp/design-tokens/` does not exist:
+**If missing:**
 ```bash
 mkdir -p "<PROJECT_DIR>/src/main/webapp/design-tokens/"
 ```
 
-If `app.override.css` already exists, **append** the new tokens instead of overwriting
-(preserve any prior overrides). Add a separator comment: `/* --- Legacy theme tokens appended <DATE> --- */`
+**If `app.override.css` exists:**
+- Append new tokens (don't overwrite)
+- Add separator: `/* --- Legacy theme tokens appended <DATE> --- */`
 
 ---
 
-### STEP 7 · Print summary and report
+### STEP 7 · Print Summary
 
-Display a summary:
+**Sample report:**
 
 ```
-Theme Token Extraction — [DRY RUN: no files written | COMPLETE]
+Theme Token Extraction — [COMPLETE | DRY RUN]
 
-Project:     <PROJECT_DIR>
-Theme:       <THEME_NAME>
-Source:      <PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/style.css
-Output:      <PROJECT_DIR>/src/main/webapp/design-tokens/app.override.css
+Project:     /path/to/project
+Theme:       default
+Source:      /path/to/project/src/main/webapp/themes/default/style.css
+Output:      /path/to/project/src/main/webapp/design-tokens/app.override.css
 
 Extracted Tokens:
-  ✓ Typography — N variables
-    • font-family, font-size, font-weight, line-height, letter-spacing, etc.
-    • Examples: --my-heading-font (Arial), --my-body-size (14px), ...
-    • Custom font: [YES - imported | NO - using foundation defaults]
+  ✓ Typography — 8 variables
+    • font-family, font-size, font-weight, line-height, letter-spacing
+    • Custom font: YES — Roboto (imported)
   
-  ✓ Colors — N variables
-    • primary, secondary, accent, surface, border, text, etc.
-    • Examples: --my-primary (#FF7250), --my-error (#F44336), ...
+  ✓ Colors — 6 variables
+    • primary, secondary, error, success, surface, text
   
-  ✓ Spacing — N variables
-    • gap, margin, padding, space, size, etc.
-    • Examples: --my-gap (8px), --my-margin (16px), ...
+  ✓ Spacing — 5 variables
+    • gap, margin, padding, border-radius, size
 
-Token Mapping (against reference foundation.css):
-  • M foundation overrides (e.g., --wm-color-primary, --wm-font-family-brand)
-  • N custom tokens (no foundation match, kept as-is)
-  • Total: M + N variables
-  
-Reference Used:
-  • Foundation: wm-theme-conv/assets/foundation.css (standard design system tokens)
-  • Legacy theme: <PROJECT_DIR>/src/main/webapp/themes/<THEME_NAME>/style.css
-
-Font Configuration:
-  [if user approved custom font]
-  ✓ Font family: <FONT_FAMILY>
-  ✓ Import method: @import url() | @font-face | system font
-  ✓ Added to: app.override.css line 1
+Token Mapping (vs. foundation.css):
+  • 14 foundation overrides
+  • 2 custom tokens
+  • Total: 16 variables
 
 Output File:
-  Created: <PROJECT_DIR>/src/main/webapp/design-tokens/app.override.css
-  Size: <SIZE>
+  Created: src/main/webapp/design-tokens/app.override.css
+  Size: 2.5 KB
   Status: Ready for Studio import
 
 Next Steps:
-  1. Open the project in WaveMaker Studio
-  2. Studio will automatically load app.override.css on app startup
-  3. If font was imported, verify it loads correctly in page preview
-  4. All design system components will use the new tokens
-  5. Verify colors, typography, and spacing in the page preview
-  6. Adjust tokens in app.override.css if needed (no re-import required)
-```
-
-If `--dry-run`: note that no files were written.
-If `--verbose`: show the full token list with mappings and font import URL.
-
----
-
-## Edge Cases and Error Handling
-
-### Missing style.css File
-
-**Behavior:**
-- STEP 1 validation checks for `src/main/webapp/themes/<THEME_NAME>/style.css`
-- If missing → abort with error: *"No style.css found in theme folder."*
-
-**Solution:**
-- Ensure the theme folder contains a `style.css` file
-- If the theme has CSS in other files (`.less`, `.scss`), compile them to `style.css` first
-- If no theme styling exists, create a blank `style.css` with an empty `:root { }`
-
----
-
-### Empty :root Variables (No CSS Variables Defined)
-
-**Behavior:**
-- If `style.css` exists but has no `:root { --var: value; }` definitions:
-  - **STEP 3 uses Strategy 2 (Fallback)** — extracts actual CSS property values
-  - Scans selectors for `color:`, `font-family:`, `font-size:`, `padding:`, `margin:`, `border-radius:`, etc.
-  - Maps found values to foundation semantic tokens automatically
-  - Creates `app.override.css` with extracted tokens using `--wm-*` naming
-
-**Example:**
-```css
-/* Input: style.css with properties but no :root variables */
-body { font-family: Arial, sans-serif; font-size: 14px; }
-h1 { color: #2294ef; font-size: 32px; font-weight: 700; }
-.primary-btn { background-color: #2294ef; padding: 10px 18px; }
-.error { color: #ff6464; }
-
-/* Output: app.override.css with foundation tokens */
-:root {
-  /* Typography Tokens */
-  --wm-font-family-plain: Arial, sans-serif;
-  --wm-font-size-base: 14px;
-  --wm-h1-font-size: 32px;
-  --wm-h1-font-weight: 700;
-  
-  /* Color Tokens */
-  --wm-color-primary: #2294ef;
-  --wm-color-error: #ff6464;
-  
-  /* Spacing Tokens */
-  --wm-btn-padding: 10px 18px;
-}
-```
-
-**Next step:**
-- No manual work needed! All values automatically extracted and mapped
-- User can fine-tune token names in `app.override.css` if needed
-- Studio will immediately use the extracted tokens
-
----
-
-### CSS Variables Defined Outside :root Selector
-
-**Behavior:**
-- Only variables defined in `:root { }` scope are extracted (global scope)
-- Variables defined in other selectors (`.class-name { --var: value; }`) are **ignored**
-- This is intentional: component-scoped variables are not design tokens
-
-**Example:**
-```css
-:root {
-  --primary-color: #FF7250;        /* ✓ EXTRACTED */
-}
-
-.header {
-  --header-padding: 16px;          /* ✗ IGNORED (not in :root) */
-}
-
-body {
-  --body-margin: 0;                /* ✗ IGNORED (not in :root) */
-}
-```
-
-**Note:** Only `:root` variables are global design tokens. Component-specific CSS variables should remain in component stylesheets.
-
----
-
-### Referenced Variable Does Not Exist
-
-**Behavior:**
-- If a token value contains `var(--referenced-name)` but that variable is not defined:
-  - The reference is **preserved as-is** in the output
-  - The browser CSS engine will fall back to initial value if reference fails at runtime
-
-**Example:**
-```css
-/* Input style.css */
-:root {
-  --primary-color: #FF7250;
-  --btn-hover-color: color-mix(in srgb, var(--primary-color), #000 20%);
-  --undefined-ref: var(--does-not-exist);  /* Reference to undefined variable */
-}
-
-/* Output app.override.css */
-:root {
-  --wm-color-primary: #FF7250;
-  --wm-btn-hover-color: color-mix(in srgb, var(--wm-color-primary), #000 20%);  /* ✓ Mapped correctly */
-  --wm-undefined-ref: var(--does-not-exist);  /* ✗ Kept as-is; will fail at runtime */
-}
-```
-
-**Risk:** At runtime, `--wm-undefined-ref` will not resolve. If this causes rendering issues:
-1. Check the source `style.css` for typos in variable names
-2. Verify the referenced variable was extracted
-3. Manually fix the reference in `app.override.css` or add the missing variable definition
-
----
-
-### Duplicate Variable Names
-
-**Behavior:**
-- If the same variable name appears multiple times in `:root`:
-  - **First occurrence is kept** (CSS cascade: later values override)
-  - **Subsequent duplicates are discarded** with count reported in verbose mode
-- This is safe: CSS naturally handles duplicates via cascade
-
-**Example:**
-```css
-/* Input style.css */
-:root {
-  --primary-color: #FF7250;        /* KEPT */
-  --primary-color: #E91E63;        /* DISCARDED (duplicate) */
-  --primary-color: #2196F3;        /* DISCARDED (duplicate) */
-}
-
-/* Output app.override.css */
-:root {
-  --wm-color-primary: #FF7250;  /* Only the first value is kept */
-}
-```
-
-**Behavior reported in VERBOSE mode:**
-```
-ℹ Deduplication: Discarded 2 duplicate token(s)
-  - --wm-color-primary (kept first value: #FF7250, discarded: #E91E63, #2196F3)
+  1. Open project in WaveMaker Studio
+  2. Studio will automatically load app.override.css
+  3. Verify colors, typography, spacing in preview
+  4. Adjust tokens in app.override.css if needed
 ```
 
 ---
 
-### CSS Variables With Complex Values
+### STEP 8 · Extract Component Variants (Basic Components Only)
 
-**Behavior:**
-- Variables with complex values are extracted and preserved exactly:
-  - `calc()` expressions
-  - `color-mix()` functions
-  - `linear-gradient()` values
-  - Quoted strings with special characters
+**Focus on basic components from foundation CSS.**
 
-**Handling:**
-- Values are extracted as-is (no simplification)
-- Variable references within values are **updated** to use mapped names
-- Quotes and special characters are preserved
+#### 8.1 — Scan Sources (in order)
 
-**Example:**
+| Source | Priority | Status |
+|---|---|---|
+| `style.css` | Primary | Scanned ✅ |
+| `app.css` | Secondary | Scanned if exists ✅ |
+| `pages/{pageName}/{pageName}.css` | Tertiary | Future phase |
+
+#### 8.2 — Detection Categories
+
+**Category A — Basic Component Variants**
+
+Pattern: `.wm-app` + **basic component class** + **custom modifier class**
+
 ```css
-/* Input */
-:root {
-  --gradient: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
-  --calc-value: calc(var(--base-size) * 1.5);
-  --font-stack: "Roboto", "Arial", sans-serif;
+/* ✅ EXTRACT — .app-button is basic, .dark-btn is custom modifier */
+.wm-app .dark-btn.app-button { 
+  background-color: #222; 
+  color: #fff; 
 }
 
-/* Output */
-:root {
-  --wm-gradient: linear-gradient(90deg, var(--wm-color-primary) 0%, var(--wm-color-secondary) 100%);
-  --wm-calc-value: calc(var(--wm-base-size) * 1.5);
-  --wm-font-stack: "Roboto", "Arial", sans-serif;
+/* ✅ EXTRACT — .app-label is basic, .text-ellipsis is custom modifier */
+.wm-app .text-ellipsis.app-label { 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
 }
+
+/* ❌ SKIP — .app-input is NOT a basic component */
+.wm-app .custom-input.app-input { 
+  border: 1px solid #ccc; 
+}
+```
+
+**Category B — Custom Utility Classes**
+
+Pattern: `.wm-app` + **no component class**
+
+```css
+/* ✅ EXTRACT — no component class found */
+.wm-app .card-wrapper { 
+  background: linear-gradient(...); 
+  border-radius: 16px; 
+}
+```
+
+#### 8.3 — Extraction Algorithm
+
+| Step | Action |
+|---|---|
+| 1 | Skip `:root {}`, `@font-face`, `@keyframes` blocks |
+| 2 | Skip non-basic components (input, container, data, etc.) |
+| 3 | Parse class tokens from selector |
+| 4 | Match against `COMPONENT_SELECTOR_MAP` |
+| 5 | If basic component + custom class → **Category A** |
+| 6 | If no component class → **Category B** |
+| 7 | Update `var()` references (legacy → foundation names) |
+| 8 | Deduplicate across source files |
+
+#### 8.4 — Output A: Component Variant JSON
+
+**File path:** `src/main/webapp/design-tokens/overrides/components/<component>/<component>.json`
+
+**IMPORTANT: One JSON file per component, not per variant**
+- If `button.json` exists and you find another button variant → **ADD to existing file**
+- Do NOT create `button-v2.json` or `button_dark.json`
+- Add new variants as sibling nodes under the `"appearances"` object
+
+**When to create:**
+- **First variant of a component** → Create new `<component>.json` file
+- **Additional variants of same component** → Add to existing `<component>.json` (as sibling appearance)
+
+**Structure Reference:** Follow the foundation CSS component structure from:
+- Reference: `@wavemaker/foundation-css/src/tokens/web/components/<component>/<component>.json`
+- Example file structure from foundation button/label/anchor components
+
+**JSON Format:**
+
+```json
+{
+  "<component-name>": {
+    "appearances": {
+      "<variant-name>": {
+        "mapping": {
+          /* CSS properties and their token references */
+          "<property>": { "value": "{token.reference.value}" },
+          "<property-with-nested>": {
+            "<sub-property>": { "value": "{token.reference.value}" }
+          },
+          "states": {
+            "hover": { /* hover state properties */ },
+            "focus": { /* focus state properties */ },
+            "active": { /* active state properties */ },
+            "disabled": { /* disabled state properties */ }
+          }
+        }
+      }
+    },
+    "meta": {
+      "appearances": {
+        "<variant-name>": {
+          "source": "user"
+        }
+      }
+    }
+  }
+}
+```
+
+**Example: Adding Multiple Variants to Same Component**
+
+When you find multiple button variants in CSS, add them all to a **single** `button.json` file:
+
+```css
+/* First variant */
+.wm-app .dark-btn.app-button {
+  color: #fff;
+  background: #000;
+  font-size: 16px;
+  padding: 12px 16px;
+}
+
+/* Second variant */
+.wm-app .outline-btn.app-button {
+  color: #2294ef;
+  background: transparent;
+  border: 2px solid #2294ef;
+  font-size: 14px;
+  padding: 10px 14px;
+}
+
+/* Third variant */
+.wm-app .ghost-btn.app-button {
+  color: #666;
+  background: transparent;
+  font-size: 14px;
+  padding: 8px 12px;
+}
+```
+
+**Single button.json with all three variants:**
+
+```json
+{
+  "btn": {
+    "appearances": {
+      "dark_btn": {
+        "mapping": {
+          "color": { "value": "{color.white.@.value}" },
+          "background": { "value": "{color.black.@.value}" },
+          "font-size": { "value": "{label.large.font-size.value}" },
+          "padding": { "value": "{space.3.value} {space.4.value}" }
+        }
+      },
+      "outline_btn": {
+        "mapping": {
+          "color": { "value": "{color.primary.@.value}" },
+          "background": { "value": "transparent" },
+          "border": {
+            "width": { "value": "2px" },
+            "style": { "value": "solid" },
+            "color": { "value": "{color.primary.@.value}" }
+          },
+          "font-size": { "value": "{label.medium.font-size.value}" },
+          "padding": { "value": "{space.2.value} {space.3.value}" }
+        }
+      },
+      "ghost_btn": {
+        "mapping": {
+          "color": { "value": "{color.gray.@.value}" },
+          "background": { "value": "transparent" },
+          "font-size": { "value": "{label.medium.font-size.value}" },
+          "padding": { "value": "{space.2.value} {space.2.value}" }
+        }
+      }
+    },
+    "meta": {
+      "appearances": {
+        "dark_btn": { "source": "user" },
+        "outline_btn": { "source": "user" },
+        "ghost_btn": { "source": "user" }
+      }
+    }
+  }
+}
+```
+
+**Complete Example — Anchor Component with btn_primary Variant:**
+
+```json
+{
+  "anchor": {
+    "appearances": {
+      "btn_primary": {
+        "mapping": {
+          "color": {
+            "@": {
+              "value": "{color.primary.@.value}"
+            }
+          },
+          "font-size": {
+            "value": "{body.medium.font-size.value}"
+          },
+          "font-family": {
+            "value": "{body.medium.font-family.value}"
+          },
+          "font-weight": {
+            "value": "{body.medium.font-weight.value}"
+          },
+          "line-height": {
+            "value": "{body.medium.line-height.value}"
+          },
+          "letter-spacing": {
+            "value": "{body.medium.letter-spacing.value}"
+          },
+          "text-transform": {
+            "value": "none"
+          },
+          "text": {
+            "decoration": {
+              "@": {
+                "value": "none"
+              }
+            }
+          },
+          "gap": {
+            "value": "{space.1.value}"
+          },
+          "icon": {
+            "size": {
+              "value": "{icon.size.@.value}"
+            }
+          },
+          "image": {
+            "size": {
+              "value": "{icon.size.@.value}"
+            },
+            "radius": {
+              "value": "{radius.circle.value}"
+            }
+          },
+          "states": {
+            "hover": {
+              "color": {
+                "@": {
+                  "value": "~\"color-mix(in srgb, {color.primary.@.value}, {color.black.@.value} {opacity.hover.value})\""
+                }
+              },
+              "text": {
+                "decoration": {
+                  "@": {
+                    "value": "none"
+                  }
+                }
+              }
+            },
+            "focus": {
+              "color": {
+                "@": {
+                  "value": "~\"color-mix(in srgb, {color.primary.@.value}, {color.black.@.value} {opacity.focus.value})\""
+                }
+              },
+              "text": {
+                "decoration": {
+                  "@": {
+                    "value": "none"
+                  }
+                }
+              }
+            },
+            "active": {
+              "color": {
+                "@": {
+                  "value": "~\"color-mix(in srgb, {color.primary.@.value}, {color.black.@.value} {opacity.active.value})\""
+                }
+              },
+              "text": {
+                "decoration": {
+                  "@": {
+                    "value": "none"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "meta": {
+      "appearances": {
+        "btn_primary": {
+          "source": "user"
+        }
+      }
+    }
+  }
+}
+```
+
+**Mapping Rule Details:**
+
+| Element | Description | Example |
+|---|---|---|
+| `<component-name>` | Top-level key matches component name | `"button"`, `"label"`, `"anchor"` |
+| `"appearances"` | Object containing all variants | Contains `"dark-btn"`, `"outline-btn"`, etc. |
+| `<variant-name>` | Custom variant name (snake_case) | `"dark_btn"`, `"text_ellipsis"`, `"btn_primary"` |
+| `"mapping"` | CSS properties mapped to token refs | `"color"`, `"background"`, `"font-size"`, etc. |
+| `"@"` | Default value key for properties | Used for single values or top-level defaults |
+| `"{...value}"` | Token reference (foundation format) | `"{color.primary.@.value}"`, `"{space.2.value}"` |
+| `"states"` | Interactive states | `"hover"`, `"focus"`, `"active"`, `"disabled"` |
+| `"meta"` | Metadata about the variant | Always include `"source": "user"` |
+
+**Property Nesting Examples:**
+
+| CSS Property | JSON Structure |
+|---|---|
+| `color: red;` | `"color": { "@": { "value": "{color.primary.@.value}" } }` |
+| `font-size: 16px;` | `"font-size": { "value": "{body.medium.font-size.value}" }` |
+| `text-decoration: none;` | `"text": { "decoration": { "@": { "value": "none" } } }` |
+| `border-color: blue;` | `"border": { "color": { "@": { "value": "{color.blue.@.value}" } } }` |
+
+**State Definitions (hover, focus, active, disabled):**
+
+States contain property overrides that apply during specific interactions:
+
+```json
+"states": {
+  "hover": {
+    "color": { "@": { "value": "~\"color-mix(...)\"" } },
+    "background": { "@": { "value": "{color.primary.darken.value}" } }
+  },
+  "focus": {
+    "outline": { "@": { "value": "2px solid {color.primary.@.value}" } }
+  },
+  "active": {
+    "background": { "@": { "value": "{color.primary.active.value}" } }
+  },
+  "disabled": {
+    "opacity": { "@": { "value": "0.38" } },
+    "cursor": { "@": { "value": "not-allowed" } }
+  }
+}
+```
+
+**Token Reference Conversion Rules:**
+
+| CSS Value | Foundation Token Reference |
+|---|---|
+| `#2294ef` (color) | `{color.primary.@.value}` |
+| `8px` (spacing) | `{space.2.value}` |
+| `4px` (small spacing) | `{space.1.value}` |
+| `16px` (large spacing) | `{space.4.value}` |
+| `8px` (border-radius) | `{radius.md.value}` |
+| `16px` (large radius) | `{radius.lg.value}` |
+| `Arial` (font) | `{body.medium.font-family.value}` |
+| `16px` (font-size) | `{body.medium.font-size.value}` |
+| `400` (font-weight) | `{body.medium.font-weight.value}` |
+| `24px` (line-height) | `{body.medium.line-height.value}` |
+| `0.5px` (letter-spacing) | `{body.medium.letter-spacing.value}` |
+
+**How to Extract Values from CSS:**
+
+When you find a CSS rule like:
+
+```css
+.wm-app .dark-btn.app-button {
+  color: #2294ef;
+  font-size: 16px;
+  background-color: #000;
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+```
+
+Convert to JSON mapping:
+
+```json
+"mapping": {
+  "color": {
+    "@": {
+      "value": "{color.primary.@.value}"  /* #2294ef → primary color token */
+    }
+  },
+  "font-size": {
+    "value": "{body.medium.font-size.value}"  /* 16px → body medium font-size */
+  },
+  "background": {
+    "@": {
+      "value": "{color.black.@.value}"  /* #000 → black color token */
+    }
+  },
+  "padding": {
+    "value": "{space.3.value}"  /* 12px → space.3 token; combined 12px 16px use largest */
+  },
+  "radius": {
+    "value": "{radius.md.value}"  /* 8px → medium radius token */
+  }
+}
+```
+
+#### 8.5 — Output B: CSS Rules to app.override.css
+
+**Append to:** `src/main/webapp/design-tokens/app.override.css`
+
+**Purpose:** Convert the variant mapping into CSS custom properties (CSS variables) that components can consume.
+
+**Relationship to JSON:**
+- JSON `mapping` → CSS custom properties
+- Each property in mapping becomes a `--wm-<component>-<property>` variable
+- States (hover, focus, active, disabled) become `:hover`, `:focus`, `:active`, `[disabled]` selectors
+
+**CSS Output Format:**
+
+```css
+/* ============================================================
+ * Component Variants (migrated from legacy theme / app CSS)
+ * ============================================================ */
+
+/* --- Button variants --- */
+.wm-app .dark-btn.app-button {
+  --wm-btn-background: var(--wm-color-black);
+  --wm-btn-color: var(--wm-color-background);
+  --wm-btn-font-size: var(--wm-label-large-font-size);
+  --wm-btn-font-family: var(--wm-label-large-font-family);
+  --wm-btn-font-weight: var(--wm-label-large-font-weight);
+  --wm-btn-line-height: var(--wm-label-large-line-height);
+  --wm-btn-letter-spacing: var(--wm-label-large-letter-spacing);
+  --wm-btn-text-transform: none;
+  --wm-btn-border-color: var(--wm-color-surface-container-highest);
+  --wm-btn-cursor: pointer;
+  --wm-btn-radius: var(--wm-radius-sm);
+  --wm-btn-padding: var(--wm-space-0) var(--wm-space-6);
+  --wm-btn-min-width: auto;
+  --wm-btn-min-height: var(--wm-space-10);
+  --wm-btn-gap: var(--wm-space-2);
+  --wm-btn-shadow: none;
+  --wm-btn-icon-size: var(--wm-icon-size-md);
+  --wm-btn-state-layer-color: var(--wm-color-on-surface);
+}
+
+.wm-app .dark-btn.app-button:hover,
+.wm-app .dark-btn.app-button:hover::before,
+.wm-app .dark-btn.app-button.hover::before {
+  --wm-btn-state-layer-opacity: var(--wm-opacity-hover);
+}
+
+.wm-app .dark-btn.app-button:focus,
+.wm-app .dark-btn.app-button:focus::before,
+.wm-app .dark-btn.app-button.focus::before {
+  --wm-btn-state-layer-opacity: var(--wm-opacity-focus);
+}
+
+.wm-app .dark-btn.app-button:active,
+.wm-app .dark-btn.app-button:active::before,
+.wm-app .dark-btn.app-button:active:hover::before,
+.wm-app .dark-btn.app-button:active.focus::before {
+  --wm-btn-state-layer-opacity: var(--wm-opacity-active);
+}
+
+.wm-app .dark-btn.app-button[disabled] {
+  --wm-btn-color: var(--wm-color-on-surface);
+  --wm-btn-background: var(--wm-color-surface-container-highest);
+  --wm-btn-border-color: var(--wm-color-surface-container-highest);
+  --wm-btn-opacity: 0.38;
+  --wm-btn-shadow: none;
+  --wm-btn-cursor: not-allowed;
+}
+```
+
+**CSS Variable Naming Convention:**
+
+| Element | Format | Example |
+|---|---|---|
+| Component prefix | `--wm-<component>-` | `--wm-btn-`, `--wm-label-`, `--wm-anchor-` |
+| Property name | `--wm-<component>-<property>` | `--wm-btn-background`, `--wm-btn-color` |
+| Nested property | `--wm-<component>-<parent>-<child>` | `--wm-btn-border-color`, `--wm-label-text-decoration` |
+| State variant | `:state` pseudo-class | `:hover`, `:focus`, `:active`, `[disabled]` |
+
+**Conversion Examples (JSON → CSS):**
+
+| JSON Mapping | CSS Variable | CSS Rule |
+|---|---|---|
+| `"color": { "@": { "value": "{color.primary.@.value}" } }` | `--wm-btn-color` | `--wm-btn-color: var(--wm-color-primary);` |
+| `"background": { "@": { "value": "{color.black.@.value}" } }` | `--wm-btn-background` | `--wm-btn-background: var(--wm-color-black);` |
+| `"font-size": { "value": "{body.medium.font-size.value}" }` | `--wm-btn-font-size` | `--wm-btn-font-size: var(--wm-body-medium-font-size);` |
+| `"states": { "hover": { "color": ... } }` | `--wm-btn-color` in `:hover` | `.btn:hover { --wm-btn-color: ...; }` |
+
+**State Pseudo-Classes Mapping:**
+
+| State | CSS Selector | Applied When |
+|---|---|---|
+| `hover` | `:hover`, `:hover::before`, `.hover::before` | User hovers over element |
+| `focus` | `:focus`, `:focus::before`, `.focus::before` | Element receives keyboard focus |
+| `active` | `:active`, `:active::before`, `:active:hover::before`, `:active.focus::before` | Element is pressed/clicked |
+| `disabled` | `[disabled]` | Element has disabled attribute |
+
+#### 8.6 — Token Reference Mapping (CSS Property → Foundation Token)
+
+**Based on foundation CSS button structure (`button.less`), map CSS properties to foundation tokens:**
+
+| CSS Property | Foundation Token | JSON Value | CSS Variable |
+|---|---|---|---|
+| **color** | Primary/semantic color | `{color.primary.@.value}` | `var(--wm-btn-color)` |
+| **background-color** | Surface color | `{color.surface.@.value}` | `var(--wm-btn-background)` |
+| **font-size** | Label scale size | `{label.large.font-size.value}` | `var(--wm-btn-font-size)` |
+| **font-family** | Label scale family | `{label.large.font-family.value}` | `var(--wm-btn-font-family)` |
+| **font-weight** | Label scale weight | `{label.large.font-weight.value}` | `var(--wm-btn-font-weight)` |
+| **line-height** | Label scale height | `{label.large.line-height.value}` | `var(--wm-btn-line-height)` |
+| **letter-spacing** | Label scale spacing | `{label.large.letter-spacing.value}` | `var(--wm-btn-letter-spacing)` |
+| **border-radius** | Radius scale | `{radius.md.value}` | `var(--wm-btn-radius)` |
+| **padding** | Space scale(s) | `{space.2.value} {space.4.value}` | `var(--wm-btn-padding)` |
+| **height** | Space scale | `{space.10.value}` | `var(--wm-btn-height)` |
+| **border-color** | Semantic color | `{color.surface.container.highest.@.value}` | `var(--wm-btn-border-color)` |
+| **border-width** | Literal value | `1px` | `var(--wm-btn-border-width)` |
+| **border-style** | Literal value | `solid` | `var(--wm-btn-border-style)` |
+| **box-shadow** | Literal value | `none` | `var(--wm-btn-shadow)` |
+| **gap** | Space scale | `{space.2.value}` | `var(--wm-btn-gap)` |
+| **cursor** | Literal value | `pointer` | `var(--wm-btn-cursor)` |
+| **opacity** | Literal value | `1` | `var(--wm-btn-opacity)` |
+
+**Color Value Mapping:**
+
+| CSS Value | Semantic Meaning | Foundation Token | JSON Reference |
+|---|---|---|---|
+| `#2294ef` | Primary brand color | Primary | `{color.primary.@.value}` |
+| `#fff`, `#ffffff` | White background | White | `{color.white.@.value}` |
+| `#000`, `#000000` | Black background | Black | `{color.black.@.value}` |
+| `#f44336` | Error/danger state | Error | `{color.error.@.value}` |
+| `#4caf50` | Success state | Success | `{color.success.@.value}` |
+| `#ff9800` | Warning state | Warning | `{color.warning.@.value}` |
+| `#2196f3` | Info state | Info | `{color.info.@.value}` |
+| `#e0e0e0` | Disabled/border | Surface container | `{color.surface.container.highest.@.value}` |
+
+**Spacing Value Mapping (px → Foundation Token):**
+
+| CSS Value | Space Token | JSON Reference | Use Case |
+|---|---|---|---|
+| `0px` | space.0 | `{space.0.value}` | No space |
+| `4px` | space.1 | `{space.1.value}` | Extra small spacing |
+| `8px` | space.2 | `{space.2.value}` | Small spacing |
+| `12px` | space.3 | `{space.3.value}` | Medium-small spacing |
+| `16px` | space.4 | `{space.4.value}` | Medium spacing |
+| `20px` | space.5 | `{space.5.value}` | Medium-large spacing |
+| `24px` | space.6 | `{space.6.value}` | Large spacing |
+| `32px` | space.8 | `{space.8.value}` | Extra large spacing |
+| `40px` | space.10 | `{space.10.value}` | XXL spacing |
+
+**Border Radius Mapping (px → Foundation Token):**
+
+| CSS Value | Radius Token | JSON Reference | Use Case |
+|---|---|---|---|
+| `2px`, `4px` | radius.sm | `{radius.sm.value}` | Small border radius |
+| `8px` | radius.md | `{radius.md.value}` | Medium border radius |
+| `12px`, `16px` | radius.lg | `{radius.lg.value}` | Large border radius |
+| `50%`, `999px` | radius.circle | `{radius.circle.value}` | Circular/fully rounded |
+
+**Font Scale Mapping (Label & Body Scales):**
+
+| Scale | Font Size | Font Weight | Line Height | Example Use |
+|---|---|---|---|---|
+| `label.small` | `{label.small.font-size.value}` | `{label.small.font-weight.value}` | `{label.small.line-height.value}` | Captions, hints |
+| `label.medium` | `{label.medium.font-size.value}` | `{label.medium.font-weight.value}` | `{label.medium.line-height.value}` | Normal labels |
+| `label.large` | `{label.large.font-size.value}` | `{label.large.font-weight.value}` | `{label.large.line-height.value}` | Emphasis, headings |
+| `body.small` | `{body.small.font-size.value}` | `{body.small.font-weight.value}` | `{body.small.line-height.value}` | Small body text |
+| `body.medium` | `{body.medium.font-size.value}` | `{body.medium.font-weight.value}` | `{body.medium.line-height.value}` | Regular body text |
+| `body.large` | `{body.large.font-size.value}` | `{body.large.font-weight.value}` | `{body.large.line-height.value}` | Large body text |
+
+**Icon Size Mapping:**
+
+| CSS Value | Icon Size Token | JSON Reference | Use Case |
+|---|---|---|---|
+| `16px` | icon.size.sm | `{icon.size.sm.value}` | Small icons |
+| `24px` | icon.size.md | `{icon.size.md.value}` | Medium icons (default) |
+| `32px` | icon.size.lg | `{icon.size.lg.value}` | Large icons |
+| `48px` | icon.size.xl | `{icon.size.xl.value}` | Extra large icons |
+
+**Opacity/State Mapping:**
+
+| CSS Value | State Token | JSON Reference | When Applied |
+|---|---|---|---|
+| `0.38` | opacity.disabled | `{opacity.disabled.value}` | When element is disabled |
+| Hover overlay | opacity.hover | `{opacity.hover.value}` | On mouse hover |
+| Focus overlay | opacity.focus | `{opacity.focus.value}` | On keyboard focus |
+| Active overlay | opacity.active | `{opacity.active.value}` | When being clicked/pressed |
+
+---
+
+### STEP 9 · Report Extracted Variants
+
+**Report what was extracted (source files remain intact):**
+
+```
+Component Variants Extracted (Basic Components):
+  ✓ button — 3 variants: (dark-btn, outline-btn, ghost-btn)
+  ✓ label — 2 variants: (text-ellipsis, ellipsis-lg)
+  ✓ message — 1 variant: (success-alert)
+
+Custom Utility Classes Extracted:
+  ✓ card-mobile-img-wrapper
+  ✓ badge-custom
+  ✓ text-underline
+
+Source Files Scanned:
+  • src/main/webapp/themes/default/style.css — 5 rules migrated
+  • src/main/webapp/app.css — 3 rules migrated
+
+Output Files Created:
+  ✓ src/main/webapp/design-tokens/overrides/components/button/button.json
+  ✓ src/main/webapp/design-tokens/overrides/components/label/label.json
+  ✓ src/main/webapp/design-tokens/app.override.css (CSS rules appended)
+
+NOTE: Source CSS files remain intact with original content preserved.
 ```
 
 ---
 
-## Token extraction rules
+## Token Extraction Rules
 
-### Typography tokens
+### Color Tokens
 
-**Patterns to match:**
-- `font-family`, `font-weight`, `font-size`, `line-height`, `letter-spacing`
-- `text-decoration`, `text-transform`, `text-align`
-- Selectors: heading styles (h1–h6, .heading, .title), body styles (body, p, .text, .label), etc.
+| Legacy Pattern | Foundation Token | Example |
+|---|---|---|
+| `*primary*` | `--wm-color-primary` | `--my-primary: #FF7250` |
+| `*secondary*` | `--wm-color-secondary` | `--brand-secondary: #656DF9` |
+| `*error*`, `*danger*` | `--wm-color-error` | `--error-color: #F44336` |
+| `*success*`, `*check*` | `--wm-color-success` | `--success-color: #5AC588` |
+| `*warning*` | `--wm-color-warning` | `--warning-color: #FFC107` |
+| `*info*` | `--wm-color-info` | `--info-color: #2196F3` |
+| `*surface*` | `--wm-color-surface` | `--bg-color: #FFFFFF` |
+| `*text*`, `*on-surface*` | `--wm-color-on-surface` | `--text-color: #35363B` |
 
-**Examples from style.css:**
-```css
-:root {
-  --my-heading-font: 'Segoe UI', Tahoma, sans-serif;
-  --my-body-font: Arial, sans-serif;
-  --my-h1-size: 32px;
-  --my-h1-weight: 700;
-  --my-h1-line-height: 40px;
-}
-```
+### Typography Tokens
 
-**Mapped to foundation (if match found):**
-```css
---wm-font-family-brand: 'Segoe UI', Tahoma, sans-serif;       /* from --my-heading-font */
---wm-font-family-plain: Arial, sans-serif;                     /* from --my-body-font */
---wm-h1-font-size: 32px;                                       /* from --my-h1-size */
---wm-h1-font-weight: 700;                                      /* from --my-h1-weight */
-```
+| Legacy Pattern | Foundation Token | Example |
+|---|---|---|
+| Heading font | `--wm-font-family-brand` | `--heading-font: 'Segoe UI', sans-serif` |
+| Body font | `--wm-font-family-plain` | `--body-font: Arial, sans-serif` |
+| H1 size | `--wm-h1-font-size` | `--h1-size: 32px` |
+| H1 weight | `--wm-h1-font-weight` | `--h1-weight: 700` |
+| Body size | `--wm-font-size-base` | `--body-size: 14px` |
+| Body weight | `--wm-font-weight-normal` | `--body-weight: 400` |
 
----
+### Spacing Tokens
 
-### Color tokens
-
-**Patterns to match:**
-- `*color*`, `*-bg*`, `*-text*`, `*-border*`, `*-shadow*`, `*-outline*`
-- Semantic names: primary, secondary, success, error, warning, info, neutral, surface, background, etc.
-
-**Examples from style.css:**
-```css
-:root {
-  --my-primary: #FF7250;
-  --my-error: #F44336;
-  --my-surface: #FFFFFF;
-  --my-text-color: #35363B;
-  --my-border-light: #E4E4E4;
-}
-```
-
-**Mapped to foundation (if match found):**
-```css
---wm-color-primary: #FF7250;          /* from --my-primary */
---wm-color-error: #F44336;            /* from --my-error */
---wm-color-surface: #FFFFFF;          /* from --my-surface */
---wm-color-on-surface: #35363B;       /* from --my-text-color (semantic: "on-surface") */
---wm-color-border: #E4E4E4;           /* from --my-border-light */
-```
+| Legacy Pattern | Foundation Token | Example |
+|---|---|---|
+| Base gap (8px) | `--wm-gap-base` | `--gap: 8px` |
+| Small gap (4px) | `--wm-gap-1` | `--gap-sm: 4px` |
+| Medium gap (8px) | `--wm-gap-2` | `--gap-md: 8px` |
+| Large gap (16px) | `--wm-gap-3` | `--gap-lg: 16px` |
+| Base margin | `--wm-margin-base` | `--margin: 16px` |
+| Base padding | `--wm-padding-base` | `--padding: 16px` |
+| Small radius | `--wm-radius-sm` | `--radius-sm: 4px` |
+| Medium radius | `--wm-radius-md` | `--radius-md: 8px` |
+| Large radius | `--wm-radius-lg` | `--radius-lg: 16px` |
 
 ---
 
-### Spacing tokens
+## Edge Cases & Error Handling
 
-**Patterns to match:**
-- `*gap*`, `*margin*`, `*padding*`, `*space*`, `*-size*` (px, em, rem, %)
-- Base units: 4px, 8px, 16px multiples (common design system approach)
+### Missing style.css
 
-**Examples from style.css:**
-```css
-:root {
-  --my-gap-base: 8px;
-  --my-gap-1: 4px;
-  --my-gap-2: 8px;
-  --my-gap-3: 12px;
-  --my-margin-default: 16px;
-  --my-padding: 12px;
-}
-```
+| Scenario | Behavior | Solution |
+|---|---|---|
+| File missing | STEP 1 validation fails | Create `style.css` with empty `:root {}` |
+| .less file instead | File not found error | Compile `.less` to `.css` first |
 
-**Mapped to foundation (if match found):**
-```css
---wm-gap-base: 8px;                   /* from --my-gap-base */
---wm-gap-1: 4px;                      /* from --my-gap-1 */
---wm-gap-2: 8px;                      /* from --my-gap-2 */
---wm-gap-3: 12px;                     /* from --my-gap-3 */
---wm-margin-base: 16px;               /* from --my-margin-default (semantic) */
-```
+### Empty :root Variables
+
+| Scenario | Behavior | Solution |
+|---|---|---|
+| No `:root` defined | Use Strategy 2 (property extraction) | Extracts from selectors automatically |
+| Mixed variables | Use both strategies | Combines CSS vars + properties |
+
+### CSS Variable References
+
+| Scenario | Example | Handling |
+|---|---|---|
+| Valid reference | `var(--primary-color)` | Maps to foundation name |
+| Undefined reference | `var(--does-not-exist)` | Preserved as-is (browser fallback) |
+| Circular reference | A → B → A | Reported as warning |
+
+### Duplicate Tokens
+
+| Scenario | Behavior | Solution |
+|---|---|---|
+| Same var appears twice | First occurrence kept | Subsequent ones discarded |
+| Reported in verbose | Shows count of duplicates | User can fix source CSS |
 
 ---
 
-## Output example
+## Output Example
 
-**Input style.css** (legacy):
+**Input: style.css**
+
 ```css
 :root {
   --primary-color: #FF7250;
   --secondary-color: #656DF9;
-  --success-color: #5AC588;
-  --error-color: #F44336;
   --font-family: 'Roboto', sans-serif;
-  --font-size-h1: 32px;
-  --font-size-body: 14px;
-  --gap-sm: 8px;
-  --gap-md: 16px;
+  --gap-base: 8px;
 }
 ```
 
-**User prompt for font family:**
-```
-Found custom font family in theme:
-  Font: 'Roboto', sans-serif
+**Output: app.override.css**
 
-Do you want to use this font family in the design system?
-  [Y/n]
-→ User answers: Y
-```
-
-**Output app.override.css** (design tokens with font import):
 ```css
 /**
  * Design Token Overrides — Migrated from legacy theme
  * Theme: default
  * Source: /path/to/project/src/main/webapp/themes/default/style.css
- * 
- * These tokens override foundation.css values.
- * Foundation reference: wm-theme-conv/assets/foundation.css (standard design system tokens)
  */
 
-/* Font imports */
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&display=swap');
 
 :root {
   /* Color Overrides */
-  --wm-color-error: #F44336;
   --wm-color-primary: #FF7250;
   --wm-color-secondary: #656DF9;
-  --wm-color-success: #5AC588;
 
   /* Spacing Overrides */
   --wm-gap-base: 8px;
-  --wm-gap-md: 16px;
 
   /* Typography Overrides */
   --wm-font-family-brand: 'Roboto', sans-serif;
-  --wm-h1-font-size: 32px;
-  --wm-body-medium-font-size: 14px;
 }
 ```
 
 ---
 
+## Quick Reference: Component Variant Creation
+
+**When you find a custom CSS variant, follow this process:**
+
+### 1. Identify Component & Variant Name
+
+**From CSS rule:**
+```css
+.wm-app .dark-btn.app-button {
+  color: #2294ef;
+  background: #000;
+}
+```
+
+**Extract:**
+- Component: `button` (from `.app-button`)
+- Variant name: `dark_btn` (from `.dark-btn`, converted to snake_case)
+
+### 2. Create JSON File Path
+
+```
+src/main/webapp/design-tokens/overrides/components/button/button.json
+```
+
+### 3. Map CSS Properties to Token References
+
+**CSS Property → Token Reference Conversion:**
+
+| CSS Property | Value | Foundation Token | JSON Mapping |
+|---|---|---|---|
+| `color` | `#2294ef` | primary blue color | `"color": { "@": { "value": "{color.primary.@.value}" } }` |
+| `background` | `#000` | black color | `"background": { "@": { "value": "{color.black.@.value}" } }` |
+| `font-size` | `16px` | body medium | `"font-size": { "value": "{body.medium.font-size.value}" }` |
+| `padding` | `12px 16px` | space.3 (largest value) | `"padding": { "value": "{space.3.value}" }` |
+| `border-radius` | `8px` | radius.md | `"radius": { "value": "{radius.md.value}" }` |
+
+### 4. Create JSON Structure
+
+**Basic Template:**
+
+```json
+{
+  "button": {
+    "appearances": {
+      "dark_btn": {
+        "mapping": {
+          "color": { "@": { "value": "{color.primary.@.value}" } },
+          "background": { "@": { "value": "{color.black.@.value}" } },
+          "font-size": { "value": "{body.medium.font-size.value}" },
+          "padding": { "value": "{space.3.value}" },
+          "radius": { "value": "{radius.md.value}" }
+        }
+      }
+    },
+    "meta": {
+      "appearances": {
+        "dark_btn": {
+          "source": "user"
+        }
+      }
+    }
+  }
+}
+```
+
+### 5. Add State Definitions (if applicable)
+
+**If CSS has hover/focus/active states:**
+
+```css
+.wm-app .dark-btn.app-button:hover {
+  background: #1a1a1a;
+  color: #fff;
+}
+```
+
+**Add to JSON:**
+
+```json
+"states": {
+  "hover": {
+    "background": { "@": { "value": "{color.black.darken.value}" } },
+    "color": { "@": { "value": "{color.white.@.value}" } }
+  }
+}
+```
+
+### 6. Generate CSS Variables
+
+**Auto-generate CSS rules for app.override.css:**
+
+```css
+.wm-app .dark-btn.app-button {
+  --wm-button-color: var(--wm-color-primary);
+  --wm-button-background: var(--wm-color-black);
+  --wm-button-font-size: var(--wm-body-medium-font-size);
+  --wm-button-padding: var(--wm-space-3);
+  --wm-button-radius: var(--wm-radius-md);
+}
+
+.wm-app .dark-btn.app-button:hover {
+  --wm-button-background: var(--wm-color-black-darken);
+  --wm-button-color: var(--wm-color-white);
+}
+```
+
+### Common Token Reference Patterns
+
+**For different property types:**
+
+| Type | Value | Token Reference | Example |
+|---|---|---|---|
+| **Primary Color** | `#2294ef`, `rgb(34, 148, 239)` | `{color.primary.@.value}` | `--btn-color: var(--wm-color-primary)` |
+| **Neutral Colors** | `#000`, `#fff`, `#ccc` | `{color.black.@.value}`, `{color.white.@.value}` | `--bg: var(--wm-color-black)` |
+| **Semantic Colors** | Error, success, warning | `{color.error.@.value}`, `{color.success.@.value}` | `--error-bg: var(--wm-color-error)` |
+| **Spacing** | `4px`, `8px`, `16px`, `24px` | `{space.1.value}`, `{space.2.value}`, `{space.3.value}`, `{space.4.value}` | `--padding: var(--wm-space-3)` |
+| **Border Radius** | `4px`, `8px`, `16px` | `{radius.sm.value}`, `{radius.md.value}`, `{radius.lg.value}` | `--radius: var(--wm-radius-md)` |
+| **Font Family** | Arial, Roboto | `{body.medium.font-family.value}` | `--font: var(--wm-body-medium-font-family)` |
+| **Font Size** | `14px`, `16px`, `18px` | `{body.small.font-size.value}`, `{body.medium.font-size.value}`, `{body.large.font-size.value}` | `--size: var(--wm-body-medium-font-size)` |
+| **Font Weight** | `400`, `500`, `700` | `{body.medium.font-weight.value}` | `--weight: var(--wm-body-medium-font-weight)` |
+| **Line Height** | `20px`, `24px` | `{body.medium.line-height.value}` | `--height: var(--wm-body-medium-line-height)` |
+| **Letter Spacing** | `0.5px` | `{body.medium.letter-spacing.value}` | `--spacing: var(--wm-body-medium-letter-spacing)` |
+| **Icon Size** | `16px`, `24px`, `32px` | `{icon.size.sm.value}`, `{icon.size.md.value}`, `{icon.size.lg.value}` | `--icon-size: var(--wm-icon-size-md)` |
+| **Opacity** | `0.5`, `0.38` | `{opacity.hover.value}`, `{opacity.focus.value}`, `{opacity.active.value}` | `--opacity: var(--wm-opacity-hover)` |
+
+### Nested Property Examples
+
+**For compound CSS properties:**
+
+```json
+/* text-decoration */
+"text": {
+  "decoration": {
+    "@": { "value": "underline" }
+  }
+}
+
+/* border-color */
+"border": {
+  "color": {
+    "@": { "value": "{color.primary.@.value}" }
+  }
+}
+
+/* icon-size */
+"icon": {
+  "size": {
+    "value": "{icon.size.md.value}"
+  }
+}
+```
+
+---
+
+## FAQ
+
+| Question | Answer |
+|---|---|
+| **Will source CSS files be modified?** | No. Source files remain intact. Only output files are created/appended. |
+| **Can I re-run the skill?** | Yes. STEP 2 will ask about foundation CSS installation each time. |
+| **What if app.override.css already exists?** | Tokens are appended with a separator comment to preserve prior customizations. |
+| **How do I know which tokens were mapped?** | Use `--verbose` flag to see detailed mapping report. |
+| **Can I extract from multiple source files?** | Yes. STEP 8 scans style.css, app.css, and page CSS in order. |
+| **Are advanced components (input, data) supported?** | Not in this version. Only basic components are extracted. Future phases will add support. |
+
+---
+
 ## Notes
 
-- **Foundation reference file**: `../assets/foundation.css` is bundled with the wm-theme-conv skill and defines the standard design system token names. It is NOT read from the project directory — it's a reference for intelligent token mapping.
-- **Semantic mapping**: The converter tries to infer semantic meaning from variable names (e.g., `--my-primary` → `--wm-color-primary`). For ambiguous names, tokens are treated as custom (kept as-is).
-- **Foundation reference matching**: If a token value in style.css **already uses a foundation variable** (e.g., `--my-gap: var(--wm-gap-base)`), it is skipped (no override needed).
-- **Font family handling**:
-  - **Google Fonts** (e.g., `'Roboto', sans-serif`): Auto-detect and import from `https://fonts.googleapis.com/css2`
-  - **Web fonts** (e.g., URLs): Use as-is or wrap in `@font-face` if needed
-  - **System fonts** (e.g., Arial, Helvetica): No import needed, directly use in variable
-  - **User approval**: Always ask before importing to avoid unnecessary external requests
-- **Dark mode variants**: If style.css has `:root[color='dark']` selectors, process them separately and write to a `:root[color='dark']` section in app.override.css.
-- **Incremental writing**: If app.override.css already exists, append new tokens with a clear separator so prior customizations are preserved.
-- **Font import detection**: If font value contains a known Google Font name or a URL, auto-suggest the appropriate import method.
+- **Foundation reference:** `@wavemaker/foundation-css` npm package provides semantic token standards
+- **Semantic mapping:** Infers meaning from variable names (e.g., `--my-primary` → `--wm-color-primary`)
+- **Incremental updates:** Tokens appended to existing `app.override.css` if file exists
+- **Font handling:** Custom fonts require user approval before import URL is added
+- **Basic components only:** Current version extracts variants for button, label, message, search, progress, icon, anchor, picture, bottomsheet, spinner, skeleton
+- **Future phases:** Input, data, container, dialogs, navigation, chart, and other advanced component types

@@ -48,7 +48,7 @@ The skill prompts for these at runtime and lets you override them — paste valu
 | `/wm-design-system-migrator` | **Full Design System migration** — pom.xml, properties, index.html, variables, layouts, theme tokens, NPM scope, migration history. Produces a ZIP. |
 | `/wm-component-conversion` | **Layout modernisation** — converts grid (`wm-layoutgrid / wm-gridrow / wm-gridcolumn`) and linear (`wm-linearlayout / wm-linearlayoutitem`) markup to `wm-container` flex layout. Dry-run mode available. |
 | `/wm-projectconversion` | **Project conversion** — pom.xml, properties, index.html, variables, NPM scope, migration history. Produces a ZIP. |
-| `/wm-theme-to-designsystem-conversion` | **Theme token migration** — extracts legacy theme CSS variables and CSS property values from `style.css` into Design System global tokens (color, spacing, typography) with `--wm-*` semantic naming. Writes to `design-tokens/app.override.css`. Handles deduplication, variable reference mapping, and font family customization. |
+| `/wm-theme-to-designsystem-conversion` | **Theme token migration** — extracts legacy theme CSS variables and CSS property values from `style.css`, `app.css`, and page-level CSS into Design System global tokens (color, spacing, typography) with `--wm-*` semantic naming and component variants/appearances. Writes to `design-tokens/app.override.css` and `design-tokens/overrides/components/`. Handles deduplication, variable reference mapping, and font family customization. |
 
 ---
 
@@ -110,7 +110,7 @@ Automatically extracts legacy theme CSS variables from `src/main/webapp/themes/<
 | **Variable reference mapping** | Token values referencing other variables updated to use mapped names: `var(--brand-primary)` → `var(--wm-color-primary)`. Ensures all references resolve correctly. |
 | **Dependent variable mapping** | Color-mix and calc expressions using old token names updated to use new mapped names: `color-mix(in srgb, var(--brand-primary), ...)` → `color-mix(in srgb, var(--wm-color-primary), ...)` |
 | **Font family customization** | User prompted whether to import custom font families. Google Fonts auto-detected and wrapped in `@import url()`. System fonts used directly. |
-| **Foundation reference** | Uses bundled foundation.css semantic token names for intelligent mapping—ensures consistency with Design System standards. |
+| **Dynamic foundation reference** | Installs `@wavemaker/foundation-css` npm package to access complete foundation token definitions, component styles, and global styles—ensures consistency with Design System standards and always uses latest definitions. |
 
 ### Token Categories
 
@@ -185,6 +185,24 @@ Writes to `src/main/webapp/design-tokens/app.override.css`:
 /wm-theme-to-designsystem-conversion /path/to/MyApp Wavemaker-Ai --verbose
 ```
 
+### Foundation Package Installation
+
+When extracting theme tokens, the skill automatically installs the `@wavemaker/foundation-css` npm package into the project's `design-tokens/` folder. This package provides:
+
+**Foundation CSS file:**
+- `foundation/foundation.css` — all `--wm-*` semantic token definitions
+
+**Global token definitions** (JSON reference):
+- `src/tokens/web/global/radius/radius.json` — border-radius, border-width, border-color tokens
+- `src/tokens/web/global/color/color.json` — semantic color tokens (primary, secondary, error, success, warning, info)
+- `src/tokens/web/global/spacing/spacing.json` — gap, margin, padding, size tokens
+- `src/tokens/web/global/typography/typography.json` — font-family, font-size, font-weight, line-height tokens
+
+**Component styles** (optional):
+- `src/tokens/web/components/` — component-specific token overrides for button, input, navigation, etc.
+
+The installation happens transparently during token extraction (STEP 2) and ensures your design tokens are always aligned with the current Design System standards. The skill uses the global token definitions to intelligently map extracted theme values to semantic `--wm-*` token names.
+
 ### Execution in Full Pipeline
 
 When invoked via `/wm-design-system-migrator`, theme token migration happens **AFTER** design system conversion but **BEFORE** theme folder deletion:
@@ -195,6 +213,73 @@ When invoked via `/wm-design-system-migrator`, theme token migration happens **A
 4. **PHASE 5** — Packaging with tokens in `design-tokens/app.override.css`
 
 This execution order ensures no data loss and proper token capture before cleanup.
+
+### Component Variant Extraction
+
+Beyond global tokens, the skill can extract component-specific variants/appearances from legacy styles (STEP 8 — optional):
+
+**Sources scanned:**
+- `src/main/webapp/themes/<THEME_NAME>/style.css` — theme-level component customizations
+- `src/main/webapp/app.css` — application-level component overrides
+- Page-level CSS files — page-specific component variants
+
+**Components recognized:**
+- Button variants (`.btn`, `.btn-primary`, `.btn.dark-btn`, `.btn-ghost`, etc.)
+- Input variants (`.input`, `.input-error`, `.input-filled`, `.input-outlined`, etc.)
+- Navigation variants (`.nav-item`, `.nav-item.active`, `.nav-link`, etc.)
+- Any custom component class patterns
+
+**Dual outputs generated:**
+
+**1. Component variant JSON files:**
+```
+src/main/webapp/design-tokens/overrides/components/<component>/<component>.json
+```
+
+**2. CSS class rules in app.override.css:**
+```css
+.wm-app .btn-dark-btn {
+  --wm-btn-background: var(--wm-color-black);
+  --wm-btn-color: var(--wm-color-background);
+  --wm-btn-font-size: var(--wm-label-large-font-size);
+  --wm-btn-border-color: var(--wm-color-surface-container-highest);
+  --wm-btn-radius: var(--wm-radius-sm);
+  --wm-btn-padding: var(--wm-space-0) var(--wm-space-6);
+}
+
+.wm-app .btn-dark-btn:hover {
+  --wm-btn-state-layer-opacity: var(--wm-opacity-hover);
+}
+
+.wm-app .btn-dark-btn:disabled {
+  --wm-btn-background: var(--wm-color-surface-container-highest);
+  --wm-btn-cursor: not-allowed;
+}
+```
+
+**Example — Component variant JSON structure:**
+```json
+{
+  "btn": {
+    "appearances": {
+      "dark-btn": {
+        "mapping": {
+          "background": { "value": "{color.black.@.value}" },
+          "color": { "value": "{color.background.@.value}" },
+          "font-size": { "value": "{label.large.font-size.value}" },
+          "states": {
+            "hover": { "state": { "layer": { "opacity": { "value": "{opacity.hover.value}" } } } },
+            "disabled": { "opacity": { "value": "0.38" }, "cursor": { "value": "not-allowed" } }
+          }
+        },
+        "meta": { "source": "user" }
+      }
+    }
+  }
+}
+```
+
+All token values use semantic references to foundation tokens (`{color.primary.value}`, `{radius.md.value}`, `{space.2.value}`, `{opacity.hover.value}`, etc.), and CSS rules map these to `--wm-<component>-*` custom properties, ensuring appearance consistency with the Design System.
 
 ---
 
