@@ -720,16 +720,30 @@ Save nothing; this step is read-only.
 
 If `RUN_THEME = true` (theme token migration enabled):
 
-1. **Read theme files** from `<TARGET_DIR>/src/main/webapp/themes/<THEME_NAME>/style.css`
-2. **Extract tokens** (typography, colors, spacing) using the wm-theme-to-designsystem-conversion skill logic
-3. **Build app.override.css** with mapped design tokens
-4. **Create design-tokens/ folder** (empty, will be populated in STEP 9)
-5. **Write extracted tokens** to `<TARGET_DIR>/src/main/webapp/design-tokens/app.override.css`
+1. **Invoke the `wm-theme-to-designsystem-conversion` skill** to extract and migrate theme tokens:
+   ```bash
+   /wm-theme-to-designsystem-conversion <TARGET_DIR> <THEME_NAME>
+   ```
+   Where:
+   - `<TARGET_DIR>` = the project directory being converted
+   - `<THEME_NAME>` = the active theme folder name (e.g., `default`, `light`, `custom`)
+
+2. **Skill execution:**
+   - The skill will read theme files from `<TARGET_DIR>/src/main/webapp/themes/<THEME_NAME>/style.css`
+   - Extract tokens (typography, colors, spacing)
+   - Build `app.override.css` with mapped design tokens
+   - Create `design-tokens/` folder structure if needed
+   - Write extracted tokens to `<TARGET_DIR>/src/main/webapp/design-tokens/app.override.css`
+
+3. **Verify skill completion:**
+   - Ensure no errors occurred during skill execution
+   - Check that `<TARGET_DIR>/src/main/webapp/design-tokens/app.override.css` was created with tokens
+   - If skill fails, abort the conversion with error message
 
 **Important:**
-- Do NOT delete themes/ folder yet — it's needed for token extraction
-- Create design-tokens folder only as a destination for the extracted tokens
-- The actual themes/ folder deletion happens in STEP 9
+- Do NOT delete `themes/` folder yet — it's needed for token extraction (skill needs access to source files)
+- The `wm-theme-to-designsystem-conversion` skill is responsible for all extraction logic
+- The actual `themes/` folder deletion happens in STEP 9 (after successful token extraction)
 
 ---
 
@@ -984,7 +998,8 @@ Files changed:
   ✓ src/main/webapp/index.html     [WEB: foundation.css + design-tokens block | MOBILE: title only]
   ✓ src/main/webapp/app.variables.json   Variable→Action rename
   ✓ <N> page HTML files            [WEB: layout restructured | MOBILE: linearlayout→container (layoutgrid kept) — or "skipped (user declined linearlayout conversion)" if user said no]
-  ✓ src/main/webapp/themes/        [WEB: removed | MOBILE: replaced with design-tokens/ skeleton]
+  ✓ src/main/webapp/design-tokens/app.override.css   [if RUN_THEME=true: tokens extracted via wm-theme-to-designsystem-conversion skill | WEB: created by Studio if RUN_THEME=false]
+  ✓ src/main/webapp/themes/        [removed after token extraction | MOBILE: replaced with design-tokens/ skeleton]
   ✓ ui-build.js                    @wavemaker → @wavemaker-ai (both WEB and MOBILE)
   ✓ src/main/webapp/wm_rn_config.json   [MOBILE: enableDesignTokens=true + enableHermes=true | WEB: skipped]
   ✓ migration_info.json            Created / kept existing

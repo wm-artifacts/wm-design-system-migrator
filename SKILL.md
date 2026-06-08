@@ -398,12 +398,12 @@ output to build the per-page counts for the unified summary.
 **EXECUTION ORDER CRITICAL:**
 1. Extract tokens from `src/main/webapp/themes/<THEME_NAME>/style.css` (while themes/ folder still exists)
 2. Write tokens to `src/main/webapp/design-tokens/app.override.css`
-3. THEN delete themes/ folder (in PHASE 3.5)
+3. Delete themes/ folder (in PHASE 3.5, BEFORE zipping)
 
 Use the **Read** tool to load `../wm-theme-to-designsystem-conversion/SKILL.md` (sibling skill folder).
 **Do NOT use the Skill tool** — read the file directly and execute its steps inline.
 
-Execute **STEP 0 through STEP 7** from that file inline, using the
+Execute **STEP 0 through STEP 9** from that file inline, using the
 variables already resolved in STEP 0–1 above:
 
 | Variable | Source |
@@ -411,6 +411,7 @@ variables already resolved in STEP 0–1 above:
 | Project directory | `TARGET_DIR` |
 | Theme name | `THEME_NAME` (detected in STEP 1) |
 | `DRY_RUN` | always `false` when called from this orchestrator |
+| `SKIP_THEME` | `true` if user passed `--skip-theme` to orchestrator |
 
 **Skip** these wm-theme-to-designsystem-conversion steps — already handled by this orchestrator:
 
@@ -419,38 +420,77 @@ variables already resolved in STEP 0–1 above:
 | STEP 0 — Parse arguments | Done in STEP 0 above |
 | STEP 1 — Validate project and theme | Done in STEP 1 above |
 
-Execute **STEP 2 through STEP 7** in order:
+Execute **STEP 2 through STEP 9** in order:
 - STEP 2: Read foundation.css and style.css
 - STEP 3: Extract tokens (typography, colors, spacing)
 - STEP 3b: Ask user about custom font family (interactive prompt)
 - STEP 4: Match tokens against foundation
 - STEP 5: Build override CSS with font imports
 - STEP 6: Create design-tokens folder
-- STEP 7: Print extraction summary (store results for unified summary)
+- STEP 7: Print extraction summary
+- STEP 8: Extract component variants
+- STEP 9: Clear processed CSS files (app.css, page-level CSS)
+
+**CRITICAL — Verify skill execution status (NON-BLOCKING):**
+
+After executing STEP 2–STEP 9, check the overall result but **continue regardless of success/failure**:
+
+1. **Check if extraction completed:**
+   - If any step failed, set `PHASE_3_STATUS = "FAILED"` and log error message
+   - If completed successfully, set `PHASE_3_STATUS = "SUCCESS"`
+   - **Do NOT abort** — continue to PHASE 3.5 (themes folder will be deleted regardless)
+
+2. **Verify output file was created:**
+   ```bash
+   test -f "<TARGET_DIR>/src/main/webapp/design-tokens/app.override.css" && test -s "<TARGET_DIR>/src/main/webapp/design-tokens/app.override.css" && echo "OK" || echo "MISSING"
+   ```
+   - If file exists and is not empty → tokens extracted successfully
+   - If missing or empty → log warning but continue
+
+3. **Verify design-tokens folder exists:**
+   ```bash
+   test -d "<TARGET_DIR>/src/main/webapp/design-tokens" && echo "OK" || echo "MISSING"
+   ```
+   - If folder exists → continue to PHASE 3.5
+   - If missing → create it: `mkdir -p "<TARGET_DIR>/src/main/webapp/design-tokens"`
 
 Capture the token extraction summary and store for the unified STEP 4 report:
-- Typography token count
-- Color token count
-- Spacing token count
-- Font family customization (YES/NO + font name)
-- Output file size
+- Typography token count (if extracted successfully)
+- Color token count (if extracted successfully)
+- Spacing token count (if extracted successfully)
+- Font family customization (YES/NO + font name, if extracted successfully)
+- Output file size (if file exists)
+- Component variants count (if extracted)
+- **Extraction status: SUCCESS or FAILED** — shown in final summary
 
 ---
 
-## PHASE 3.5 — Delete Legacy Themes (happens AFTER PHASE 3)
+## PHASE 3.5 — Delete Legacy Themes (ALWAYS before zipping, after PHASE 3)
 
-After theme tokens have been successfully extracted and written to `design-tokens/app.override.css`,
-execute **STEP 9** from `wm-projectconversion/SKILL.md`:
+**Themes folder is ALWAYS deleted after token extraction, regardless of extraction result. This happens BEFORE PHASE 5 zipping:**
 
-**STEP 9:** Delete the legacy themes folder
+Delete the legacy themes folder:
 ```bash
 rm -rf "<TARGET_DIR>/src/main/webapp/themes"
 ```
 
-This is now safe because:
-- All tokens have been extracted in PHASE 3
-- design-tokens/app.override.css has been populated with the tokens
-- The legacy themes folder is no longer needed
+Verify deletion:
+```bash
+test ! -d "<TARGET_DIR>/src/main/webapp/themes" && echo "OK" || echo "FAILED"
+```
+
+**Results handling:**
+
+1. **If deletion succeeds:**
+   - Log: `✓ themes/ folder deleted successfully`
+   - Continue to PHASE 5 (packaging/zipping)
+   - If `PHASE_3_STATUS = "FAILED"`, user will see the extraction failure warning in the final summary
+
+2. **If deletion fails:**
+   - Log warning: *"Theme folder deletion encountered an issue. Manual cleanup: rm -rf <TARGET_DIR>/src/main/webapp/themes"*
+   - Continue to PHASE 5 anyway (non-fatal — user can clean up manually)
+
+**Important:** Theme folder deletion ALWAYS happens BEFORE zipping, regardless of extraction outcome. The final ZIP will not contain legacy theme files. Users are informed of any extraction or deletion issues in the final summary.
 
 ---
 
@@ -516,12 +556,15 @@ PHASE 2 — Layout Conversion   [COMPLETE | SKIPPED]
   [--responsive: mobile breakpoint CSS injected into each page's .css]
 
 ════════════════════════════════════════════════════════
-PHASE 3 — Theme to DesignSystem Conversion   [COMPLETE | SKIPPED]
+PHASE 3 — Theme to DesignSystem Conversion   [COMPLETE | FAILED | SKIPPED]
 ════════════════════════════════════════════════════════
 Theme:     <THEME_NAME>
 Source:    src/main/webapp/theme/<THEME_NAME>/style.css
 Output:    src/main/webapp/design-tokens/app.override.css
+Extraction Status: [SUCCESS ✓ | FAILED ⚠ | SKIPPED]
+Themes Folder:     [DELETED ✓ (before zipping) | PRESERVED (skipped)]
 
+[If COMPLETE and SUCCESS:]
 Extracted Tokens:
   ✓ Typography  — N variables
     Font family: [CUSTOM — imported | DEFAULT — using foundation]
@@ -542,6 +585,23 @@ Font Configuration:
   [Font family selection result]
   ✓ Font: <FONT_NAME> | Using foundation defaults
   ✓ Import: @import url() | system font | not needed
+
+Folder Deletion (PHASE 3.5):
+  ✓ Legacy themes/ folder deleted (happens BEFORE zipping)
+
+[If FAILED:]
+⚠ WARNING:  <error_message_from_PHASE_3>
+Action:     Themes folder deleted as planned (PHASE 3.5 completed regardless).
+            app.override.css may be incomplete due to extraction failure.
+            Review design-tokens/app.override.css before importing to Studio.
+            You may need to manually add missing tokens to app.override.css.
+
+Folder Deletion (PHASE 3.5):
+  ✓ Legacy themes/ folder deleted (happens BEFORE zipping, regardless of extraction result)
+          
+[If SKIPPED:]
+Reason:   RUN_THEME = false (user skipped theme extraction via --skip-theme)
+Action:   Legacy themes/ folder preserved (not deleted)
 
 ════════════════════════════════════════════════════════
 Next steps
