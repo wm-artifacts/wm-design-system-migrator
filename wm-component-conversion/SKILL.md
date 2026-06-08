@@ -94,7 +94,157 @@ Wait for user confirmation before continuing.
 
 ---
 
-### STEP 3 · Write the conversion script and run it
+
+### STEP 3 · Component Attribute & Variant Conversion
+
+> **This step is opt-in — always prompt the user before executing any part of it.**
+
+Ask the user:
+
+*"Would you also like to apply component attribute and variant enhancements (forms, lists, buttons, labels, icons, tables)? [Y/n]"*
+
+If the user declines, skip to STEP 4.
+
+---
+
+#### Determine project type
+
+1. If `PROJECT_TYPE` was already resolved during this execution (e.g. read from `.wmproject.properties` in a prior step), reuse that value.
+2. Otherwise read `<PROJECT_DIR>/.wmproject.properties` and extract the `type` line:
+   - `type=WEB` → `PROJECT_TYPE=web`
+   - `type=NATIVE_MOBILE` → `PROJECT_TYPE=mobile`
+   - If absent or unrecognised → default to `web` and warn the user: *"Could not detect project type — defaulting to web rules."*
+
+---
+
+#### Load conversion rules
+
+Resolve the rules directory based on `PROJECT_TYPE`:
+
+- `PROJECT_TYPE=web`    → `wm-component-conversion/assets/rules/web/`
+- `PROJECT_TYPE=mobile` → `wm-component-conversion/assets/rules/mobile/`
+
+Rules are organised into category subdirectories. Each subdirectory contains exactly one `Rule.md`:
+
+```
+<RULES_DIR>/
+  basic/Rule.md
+  advanced/Rule.md
+  charts/Rule.md
+  containers/Rule.md
+  data/Rule.md
+  dialogs/Rule.md
+  input/Rule.md
+  layout/Rule.md
+  navigation/Rule.md
+```
+
+**Scan every immediate subdirectory of `RULES_DIR` for a `Rule.md` and read each one in full.** Do not hardcode category names — discover them dynamically so any new category is picked up automatically.
+
+The union of all loaded `Rule.md` files defines the complete set of transformations to apply.
+
+If `RULES_DIR` does not exist or no `Rule.md` files are found, skip this step and warn: *"No component rules found for project type '`<PROJECT_TYPE>`'. Skipping component conversion."*
+
+---
+
+#### Execution
+
+Each `Rule.md` file carries its Python implementation in a `## Script` section. Read every Rule.md
+that was discovered in **Load conversion rules** (all are already in memory), then assemble and run
+one optimised temp script from those blocks. Do not hardcode the script.
+
+**1 · Read the `## Script` block from each Rule.md**
+
+For every Rule.md already loaded:
+- Locate the `## Script` heading.
+- Extract the first fenced Python code block (```` ```python … ``` ````) that immediately follows it.
+- Read `# Execution order: N` from the first comment line of the block (default `99` if absent).
+- Collect `(order, code_block)`.
+
+Sort all pairs by `order` ascending.
+
+**2 · Collect function names**
+
+Scan the sorted blocks for lines matching `def (apply_\w+_rules)\(text\):`.
+Preserve the sort order to build `RULE_FUNCS_LIST`.
+
+**3 · Assemble and write `<PROJECT_DIR>/wm_comp_conv_tmp.py`**
+
+Write the file in three parts:
+
+*Part 1 — shared header (verbatim):*
+```python
+#!/usr/bin/env python3
+import re, sys, json
+from pathlib import Path
+
+PROJECT_DIR = sys.argv[1]
+DRY_RUN     = '--dry-run' in sys.argv
+PAGE_FILTER = []
+if '--pages' in sys.argv:
+    idx = sys.argv.index('--pages')
+    if idx + 1 < len(sys.argv):
+        PAGE_FILTER = [p.strip() for p in sys.argv[idx + 1].split(',')]
+
+def parse_attrs(s):
+    return dict(re.findall(r'([\w-]+)="([^"]*)"', s))
+
+def build_attrs(d):
+    return ' '.join(f'{k}="{v}"' for k, v in d.items())
+
+def merge_class(existing, *new_cls):
+    parts = existing.split() if existing else []
+    for c in new_cls:
+        if c and c not in parts:
+            parts.append(c)
+    return ' '.join(parts)
+```
+
+*Part 2 — append each sorted code block verbatim.*
+
+*Part 3 — main loop (substitute `<RULE_FUNCS_LIST>` with the comma-separated names from step 2):*
+```python
+RULE_FUNCS = [<RULE_FUNCS_LIST>]
+
+pages_dir  = Path(PROJECT_DIR) / 'src/main/webapp/pages'
+html_files = sorted(pages_dir.glob('**/*.html'))
+if PAGE_FILTER:
+    html_files = [f for f in html_files if f.parent.name in PAGE_FILTER]
+
+summary, all_counts = [], {}
+for html_path in html_files:
+    original = html_path.read_text(encoding='utf-8')
+    text, counts = original, {}
+    for rule_fn in RULE_FUNCS:
+        text, c = rule_fn(text)
+        for k, v in c.items():
+            counts[k] = counts.get(k, 0) + v
+    if sum(counts.values()) == 0:
+        continue
+    for k, v in counts.items():
+        all_counts[k] = all_counts.get(k, 0) + v
+    summary.append({'page': html_path.parent.name, 'file': str(html_path), 'changes': counts})
+    if not DRY_RUN:
+        html_path.write_text(text, encoding='utf-8')
+
+print(json.dumps({'summary': summary, 'totals': all_counts, 'dry_run': DRY_RUN}))
+```
+
+**4 · Run and clean up**
+
+```bash
+python3 "<PROJECT_DIR>/wm_comp_conv_tmp.py" "<PROJECT_DIR>" [--dry-run] [--pages "Page1,Page2"]
+```
+
+Parse the JSON output and store results in `COMP_COUNTS` for STEP 4.
+
+```bash
+rm -f "<PROJECT_DIR>/wm_comp_conv_tmp.py"
+```
+
+---
+
+### STEP 4 · Write the conversion script and run it
 
 Write the Python 3 script below to `<PROJECT_DIR>/wm_grid_conv_tmp.py`, run it
 with `python3`, then delete it (`rm -f`). Parse its JSON output to build the summary.
@@ -467,10 +617,10 @@ After capturing the JSON output, delete the temp script:
 ```bash
 rm -f "<PROJECT_DIR>/wm_grid_conv_tmp.py"
 ```
-
 ---
 
-### STEP 3b · Generate the importable ZIP (standalone only)
+
+### STEP 5 · Generate the importable ZIP (standalone only)
 
 > **Skip this step when invoked from `wm-design-system-migrator`** — the parent orchestrator
 > handles Packaging in its own PHASE 4. Only execute when running `wm-component-conversion`
@@ -510,272 +660,9 @@ Pass `ZIP_PATH` and `ZIP_SIZE` into the STEP 4 summary.
 
 ---
 
-### STEP 3c · Component Attribute & Variant Conversion (optional)
 
-> **This step is opt-in — always prompt the user before executing any part of it.**
 
-Ask the user:
-
-*"Would you also like to apply component attribute and variant enhancements (forms, lists, buttons, labels, icons, tables)? [Y/n]"*
-
-If the user declines, skip to STEP 4.
-
----
-
-#### Determine project type
-
-1. If `PROJECT_TYPE` was already resolved during this execution (e.g. read from `.wmproject.properties` in a prior step), reuse that value.
-2. Otherwise read `<PROJECT_DIR>/.wmproject.properties` and extract the `type` line:
-   - `type=WEB` → `PROJECT_TYPE=web`
-   - `type=NATIVE_MOBILE` → `PROJECT_TYPE=mobile`
-   - If absent or unrecognised → default to `web` and warn the user: *"Could not detect project type — defaulting to web rules."*
-
----
-
-#### Load conversion rules
-
-Resolve the rules directory based on `PROJECT_TYPE`:
-
-- `PROJECT_TYPE=web`    → `wm-component-conversion/assets/rules/web/`
-- `PROJECT_TYPE=mobile` → `wm-component-conversion/assets/rules/mobile/`
-
-Rules are organised into category subdirectories. Each subdirectory contains exactly one `Rule.md`:
-
-```
-<RULES_DIR>/
-  basic/Rule.md
-  advanced/Rule.md
-  charts/Rule.md
-  containers/Rule.md
-  data/Rule.md
-  dialogs/Rule.md
-  input/Rule.md
-  layout/Rule.md
-  navigation/Rule.md
-```
-
-**Scan every immediate subdirectory of `RULES_DIR` for a `Rule.md` and read each one in full.** Do not hardcode category names — discover them dynamically so any new category is picked up automatically.
-
-The union of all loaded `Rule.md` files defines the complete set of transformations to apply.
-
-If `RULES_DIR` does not exist or no `Rule.md` files are found, skip this step and warn: *"No component rules found for project type '`<PROJECT_TYPE>`'. Skipping component conversion."*
-
----
-
-#### Implementation guidelines
-
-> The following execution order is mandatory. Run the three phases sequentially; do not interleave them.
-
-**Phase 1 — Flattening Phase** *(Rule 01)*
-1. Find all `<wm-form>` and `<wm-livefilter>` elements.
-2. Extract their children; delete any `<wm-layoutgrid>`, `<wm-gridrow>`, `<wm-gridcolumn>` wrapper tags found inside.
-3. Reconstruct a new `<wm-container>` wrapper around the extracted children.
-4. Transfer the `columns` value as `itemsperrow` on the parent tag (e.g. `columns="3"` → `itemsperrow="xs-3 sm-3 md-3 lg-3"`).
-
-**Phase 2 — Flex Injection Phase** *(Rule 02)*
-1. Target all `<wm-list>`, `<wm-listtemplate>`, and bare `<wm-container>` elements.
-2. Inject `direction`, `alignment`, and `gap` attributes where absent.
-3. Drop obsolete Bootstrap layout classes `media-body` and `media-left`.
-
-**Phase 3 — Component Decorator Phase** *(Rule 03)*
-1. Iterate through leaf nodes: `<wm-button>`, `<wm-form-action>`, `<wm-label>`, `<wm-icon>`, `<wm-picture>`, `<wm-table>`.
-2. Append the required `variant="X"` mappings.
-3. Add `btn-filled` and `fa-xs` classes where applicable.
-
----
-
-#### Execution
-
-Write the Python 3 script below to `<PROJECT_DIR>/wm_comp_conv_tmp.py`, run it, then delete it. Parse its JSON output and store results in `COMP_COUNTS` for STEP 4.
-
-```python
-#!/usr/bin/env python3
-"""NDS → DS component attribute & variant converter (Rule 01 + 02 + 03)."""
-import re, sys, json
-from pathlib import Path
-
-PROJECT_DIR = sys.argv[1]
-DRY_RUN     = '--dry-run' in sys.argv
-PAGE_FILTER = []
-if '--pages' in sys.argv:
-    idx = sys.argv.index('--pages')
-    if idx + 1 < len(sys.argv):
-        PAGE_FILTER = [p.strip() for p in sys.argv[idx + 1].split(',')]
-
-def parse_attrs(s):
-    return dict(re.findall(r'([\w-]+)="([^"]*)"', s))
-
-def build_attrs(d):
-    return ' '.join(f'{k}="{v}"' for k, v in d.items())
-
-def merge_class(existing, *new_cls):
-    parts = existing.split() if existing else []
-    for c in new_cls:
-        if c and c not in parts:
-            parts.append(c)
-    return ' '.join(parts)
-
-# ── Rule 01 ───────────────────────────────────────────────────────────────────
-
-def apply_rule01(text):
-    counts = {'form_itemsperrow': 0}
-
-    def patch_form_tag(m):
-        tag, attr_str = m.group(1), m.group(2)
-        attrs = parse_attrs(attr_str)
-        cols = attrs.get('columns', '')
-        if cols and 'itemsperrow' not in attrs:
-            counts['form_itemsperrow'] += 1
-            return f'<{tag} {attr_str} itemsperrow="xs-{cols} sm-{cols} md-{cols} lg-{cols}">'
-        return m.group(0)
-
-    text = re.sub(r'<(wm-form|wm-livefilter)\b([^>]*)>', patch_form_tag, text)
-    return text, counts
-
-# ── Rule 02 ───────────────────────────────────────────────────────────────────
-
-def apply_rule02(text):
-    counts = {'wm_list': 0, 'wm_listtemplate': 0, 'wm_container': 0}
-
-    def patch_list(m):
-        attrs = parse_attrs(m.group(1))
-        attrs.pop('listclass', None)
-        attrs.setdefault('direction', 'column')
-        attrs.setdefault('alignment', 'top-left')
-        attrs.setdefault('gap', '4')
-        attrs.setdefault('wrap', 'false')
-        counts['wm_list'] += 1
-        return f'<wm-list {build_attrs(attrs)}>'
-
-    def patch_listtemplate(m):
-        attrs = parse_attrs(m.group(1))
-        attrs.setdefault('direction', 'row')
-        attrs.setdefault('alignment', 'top-left')
-        attrs.setdefault('gap', '4')
-        attrs.setdefault('width', 'fill')
-        counts['wm_listtemplate'] += 1
-        return f'<wm-listtemplate {build_attrs(attrs)}>'
-
-    def patch_container(m):
-        attrs = parse_attrs(m.group(1))
-        attrs.setdefault('direction', 'row')
-        attrs.setdefault('alignment', 'top-left')
-        attrs.setdefault('gap', '4')
-        attrs.setdefault('width', 'fill')
-        attrs['class'] = merge_class(attrs.get('class', ''), 'app-container-default')
-        attrs.setdefault('variant', 'default')
-        counts['wm_container'] += 1
-        return f'<wm-container {build_attrs(attrs)}>'
-
-    text = re.sub(r'<wm-list\b([^>]*)>', patch_list, text)
-    text = re.sub(r'<wm-listtemplate\b([^>]*)>', patch_listtemplate, text)
-    text = re.sub(r'<wm-container\b([^>]*)>', patch_container, text)
-    text = re.sub(r'\s+class="(?:media-left|media-body)"', '', text)
-    return text, counts
-
-# ── Rule 03 ───────────────────────────────────────────────────────────────────
-
-BTN_VARIANT_MAP = {
-    'btn-default': 'filled:default',
-    'btn-primary': 'filled:primary',
-    'btn-success': 'filled:success',
-    'btn-danger':  'filled:danger',
-    'btn-warning': 'filled:warning',
-    'btn-info':    'filled:info',
-}
-LABEL_SIZES = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'lead']
-
-def apply_rule03(text):
-    counts = {'button': 0, 'label': 0, 'icon': 0, 'picture': 0, 'table': 0}
-
-    def patch_button(m):
-        tag_name, attr_str = m.group(1), m.group(2)
-        attrs = parse_attrs(attr_str)
-        cls = attrs.get('class', '')
-        variant = next((v for k, v in BTN_VARIANT_MAP.items() if k in cls.split()), 'filled:default')
-        attrs['class'] = merge_class(cls, 'btn-filled')
-        attrs['variant'] = variant
-        counts['button'] += 1
-        return f'<{tag_name} {build_attrs(attrs)}>'
-
-    def patch_label(m):
-        attrs = parse_attrs(m.group(1))
-        cls = attrs.get('class', '')
-        size = next((s for s in LABEL_SIZES if s in cls.split()), None)
-        if size:
-            attrs['variant'] = f'default:{size}'
-            counts['label'] += 1
-        return f'<wm-label {build_attrs(attrs)}>'
-
-    def patch_icon(m):
-        attrs = parse_attrs(m.group(1))
-        attrs['class'] = merge_class(attrs.get('class', ''), 'fa-xs')
-        attrs['variant'] = 'default:xs'
-        counts['icon'] += 1
-        return f'<wm-icon {build_attrs(attrs)}>'
-
-    def patch_picture(m):
-        attrs = parse_attrs(m.group(1))
-        attrs.pop('shape', None)
-        attrs['resizemode'] = 'cover'
-        attrs['class'] = merge_class(attrs.get('class', ''), 'img-circle', 'img-rounded')
-        attrs['variant'] = 'default:rounded'
-        counts['picture'] += 1
-        return f'<wm-picture {build_attrs(attrs)}>'
-
-    def patch_table(m):
-        attrs = parse_attrs(m.group(1))
-        if 'variant' not in attrs:
-            attrs['variant'] = 'default'
-            counts['table'] += 1
-        return f'<wm-table {build_attrs(attrs)}>'
-
-    text = re.sub(r'<(wm-button|wm-form-action)\b([^>]*)>', patch_button, text)
-    text = re.sub(r'<wm-label\b([^>]*)>', patch_label, text)
-    text = re.sub(r'<wm-icon\b([^>]*)>', patch_icon, text)
-    text = re.sub(r'<wm-picture\b([^>]*?)>', patch_picture, text)
-    text = re.sub(r'<wm-table\b([^>]*)>', patch_table, text)
-    return text, counts
-
-# ── main ─────────────────────────────────────────────────────────────────────
-
-pages_dir  = Path(PROJECT_DIR) / 'src/main/webapp/pages'
-html_files = sorted(pages_dir.glob('**/*.html'))
-if PAGE_FILTER:
-    html_files = [f for f in html_files if f.parent.name in PAGE_FILTER]
-
-summary, all_counts = [], {}
-for html_path in html_files:
-    original = html_path.read_text(encoding='utf-8')
-    text = original
-    text, c1 = apply_rule01(text)
-    text, c2 = apply_rule02(text)
-    text, c3 = apply_rule03(text)
-    counts = {**c1, **c2, **c3}
-    if sum(counts.values()) == 0:
-        continue
-    for k, v in counts.items():
-        all_counts[k] = all_counts.get(k, 0) + v
-    summary.append({'page': html_path.parent.name, 'file': str(html_path), 'changes': counts})
-    if not DRY_RUN:
-        html_path.write_text(text, encoding='utf-8')
-
-print(json.dumps({'summary': summary, 'totals': all_counts, 'dry_run': DRY_RUN}))
-```
-
-Run with:
-```bash
-python3 "<PROJECT_DIR>/wm_comp_conv_tmp.py" "<PROJECT_DIR>" [--dry-run] [--pages "Page1,Page2"]
-```
-
-After capturing JSON output, delete the temp script:
-```bash
-rm -f "<PROJECT_DIR>/wm_comp_conv_tmp.py"
-```
-
----
-
-### STEP 4 · Print conversion summary
+### STEP 6 · Print conversion summary
 
 ```
 Grid & LinearLayout → Container Conversion — [DRY RUN: no files written | COMPLETE]
@@ -797,11 +684,11 @@ Component Attribute & Variant Conversion — [DRY RUN: no files written | COMPLE
 Rules applied: wm-component-conversion/assets/rules/<PROJECT_TYPE>/
 
 Pages converted (components):
-  ✓ Main    — N form_itemsperrow, N wm_list, N wm_listtemplate, N wm_container, N button, N label, N icon, N picture, N table
+  ✓ Main    — N form_itemsperrow, N wm_list, N wm_listtemplate, N wm_table, N wm_container, N button, N label, N icon, N picture
   ...
 
-Totals (components): N form_itemsperrow, N wm_list, N wm_listtemplate, N wm_container,
-                     N button, N label, N icon, N picture, N table across N page(s)
+Totals (components): [data rules] N form_itemsperrow, N wm_list, N wm_listtemplate, N wm_table, N wm_container
+                     [basic rules] N button, N label, N icon, N picture  — across N page(s)
 
 Collapse rule: only containers produced by this conversion are eligible (pre-existing wm-container
 elements are never collapsed). A converted wm-container wrapping exactly ONE converted child is
