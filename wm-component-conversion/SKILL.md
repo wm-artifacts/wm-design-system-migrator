@@ -534,19 +534,31 @@ If the user declines, skip to STEP 4.
 
 #### Load conversion rules
 
-Resolve the rules directory relative to this skill file:
+Resolve the rules directory based on `PROJECT_TYPE`:
+
+- `PROJECT_TYPE=web`    → `wm-component-conversion/assets/rules/web/`
+- `PROJECT_TYPE=mobile` → `wm-component-conversion/assets/rules/mobile/`
+
+Rules are organised into category subdirectories. Each subdirectory contains exactly one `Rule.md`:
 
 ```
-RULES_DIR = wm-component-conversion/assets/rules/<PROJECT_TYPE>/
+<RULES_DIR>/
+  basic/Rule.md
+  advanced/Rule.md
+  charts/Rule.md
+  containers/Rule.md
+  data/Rule.md
+  dialogs/Rule.md
+  input/Rule.md
+  layout/Rule.md
+  navigation/Rule.md
 ```
 
-Read these three rule files from `RULES_DIR` (they define what each element transformation must produce):
+**Scan every immediate subdirectory of `RULES_DIR` for a `Rule.md` and read each one in full.** Do not hardcode category names — discover them dynamically so any new category is picked up automatically.
 
-- `rule-01-structural-replacements-forms-livefilters.md`
-- `rule-02-flex-layout-integration-lists-containers.md`
-- `rule-03-attribute-class-enhancements-ui-elements.md`
+The union of all loaded `Rule.md` files defines the complete set of transformations to apply.
 
-If `RULES_DIR` does not exist or contains no rule files, skip this step and warn: *"No component rules found for project type '`<PROJECT_TYPE>`'. Skipping component conversion."*
+If `RULES_DIR` does not exist or no `Rule.md` files are found, skip this step and warn: *"No component rules found for project type '`<PROJECT_TYPE>`'. Skipping component conversion."*
 
 ---
 
