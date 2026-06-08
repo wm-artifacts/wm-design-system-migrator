@@ -29,19 +29,3 @@ Elements that previously relied on internal CSS classes to determine layout flow
    - `width="fill"`
 
 ---
-
-## Generic Containers (`<wm-container>`)
-
-- **NDS Pattern:** `<wm-container name="container1"></wm-container>`
-- **DS Pattern:** Now requires Flex and System variables.
-
-### Action
-
-Append the following styling attributes to every bare `<wm-container>`:
-
-- `direction="row"`
-- `alignment="top-left"`
-- `gap="4"`
-- `width="fill"`
-- `class="app-container-default"`
-- `variant="default"`
