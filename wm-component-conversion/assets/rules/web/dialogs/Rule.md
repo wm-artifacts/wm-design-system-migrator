@@ -63,8 +63,8 @@ Most dialog components adopt a standardized modal sizing pattern in the design s
 
 ### Action
 
-1. Add `class="modal-dialog modal-xs"`.
-2. Add `variant="default:xs"`.
+1. Add `class="modal-dialog modal-md"`.
+2. Add `variant="default:md"`.
 
 ---
 
@@ -103,13 +103,13 @@ def apply_dialogs_rules(text):
         tag, attr_str = m.group(1), m.group(2)
         attrs = parse_attrs(attr_str)
         if 'variant' not in attrs:
-            attrs['class'] = merge_class(attrs.get('class', ''), 'modal-dialog modal-xs')
-            attrs['variant'] = 'default:xs'
+            attrs['class'] = merge_class(attrs.get('class', ''), 'modal-dialog modal-md')
+            attrs['variant'] = 'default:md'
             counts[tag] += 1
         return f'<{tag} {build_attrs(attrs)}>'
 
     # wm-dialog uses \b to avoid matching wm-dialogactions
     tag_pattern = '|'.join(re.escape(t) for t in DIALOG_TAGS)
-    text = re.sub(rf'<({tag_pattern})\b([^>]*)>', patch_dialog, text)
+    text = re.sub(rf'<({tag_pattern})\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_dialog, text)
     return text, counts
 ```

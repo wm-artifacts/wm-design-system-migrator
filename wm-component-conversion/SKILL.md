@@ -92,159 +92,7 @@ Proceed with conversion? [Y/n]
 If `--dry-run` is active, note that no files will be written.
 Wait for user confirmation before continuing.
 
----
-
-
-### STEP 3 · Component Attribute & Variant Conversion
-
-> **This step is opt-in — always prompt the user before executing any part of it.**
-
-Ask the user:
-
-*"Would you also like to apply component attribute and variant enhancements (forms, lists, buttons, labels, icons, tables)? [Y/n]"*
-
-If the user declines, skip to STEP 4.
-
----
-
-#### Determine project type
-
-1. If `PROJECT_TYPE` was already resolved during this execution (e.g. read from `.wmproject.properties` in a prior step), reuse that value.
-2. Otherwise read `<PROJECT_DIR>/.wmproject.properties` and extract the `type` line:
-   - `type=WEB` → `PROJECT_TYPE=web`
-   - `type=NATIVE_MOBILE` → `PROJECT_TYPE=mobile`
-   - If absent or unrecognised → default to `web` and warn the user: *"Could not detect project type — defaulting to web rules."*
-
----
-
-#### Load conversion rules
-
-Resolve the rules directory based on `PROJECT_TYPE`:
-
-- `PROJECT_TYPE=web`    → `wm-component-conversion/assets/rules/web/`
-- `PROJECT_TYPE=mobile` → `wm-component-conversion/assets/rules/mobile/`
-
-Rules are organised into category subdirectories. Each subdirectory contains exactly one `Rule.md`:
-
-```
-<RULES_DIR>/
-  basic/Rule.md
-  advanced/Rule.md
-  charts/Rule.md
-  containers/Rule.md
-  data/Rule.md
-  dialogs/Rule.md
-  input/Rule.md
-  layout/Rule.md
-  navigation/Rule.md
-```
-
-**Scan every immediate subdirectory of `RULES_DIR` for a `Rule.md` and read each one in full.** Do not hardcode category names — discover them dynamically so any new category is picked up automatically.
-
-The union of all loaded `Rule.md` files defines the complete set of transformations to apply.
-
-If `RULES_DIR` does not exist or no `Rule.md` files are found, skip this step and warn: *"No component rules found for project type '`<PROJECT_TYPE>`'. Skipping component conversion."*
-
----
-
-#### Execution
-
-Each `Rule.md` file carries its Python implementation in a `## Script` section. Read every Rule.md
-that was discovered in **Load conversion rules** (all are already in memory), then assemble and run
-one optimised temp script from those blocks. Do not hardcode the script.
-
-**1 · Read the `## Script` block from each Rule.md**
-
-For every Rule.md already loaded:
-- Locate the `## Script` heading.
-- Extract the first fenced Python code block (```` ```python … ``` ````) that immediately follows it.
-- Read `# Execution order: N` from the first comment line of the block (default `99` if absent).
-- Collect `(order, code_block)`.
-
-Sort all pairs by `order` ascending.
-
-**2 · Collect function names**
-
-Scan the sorted blocks for lines matching `def (apply_\w+_rules)\(text\):`.
-Preserve the sort order to build `RULE_FUNCS_LIST`.
-
-**3 · Assemble and write `<PROJECT_DIR>/wm_comp_conv_tmp.py`**
-
-Write the file in three parts:
-
-*Part 1 — shared header (verbatim):*
-```python
-#!/usr/bin/env python3
-import re, sys, json
-from pathlib import Path
-
-PROJECT_DIR = sys.argv[1]
-DRY_RUN     = '--dry-run' in sys.argv
-PAGE_FILTER = []
-if '--pages' in sys.argv:
-    idx = sys.argv.index('--pages')
-    if idx + 1 < len(sys.argv):
-        PAGE_FILTER = [p.strip() for p in sys.argv[idx + 1].split(',')]
-
-def parse_attrs(s):
-    return dict(re.findall(r'([\w-]+)="([^"]*)"', s))
-
-def build_attrs(d):
-    return ' '.join(f'{k}="{v}"' for k, v in d.items())
-
-def merge_class(existing, *new_cls):
-    parts = existing.split() if existing else []
-    for c in new_cls:
-        if c and c not in parts:
-            parts.append(c)
-    return ' '.join(parts)
-```
-
-*Part 2 — append each sorted code block verbatim.*
-
-*Part 3 — main loop (substitute `<RULE_FUNCS_LIST>` with the comma-separated names from step 2):*
-```python
-RULE_FUNCS = [<RULE_FUNCS_LIST>]
-
-pages_dir  = Path(PROJECT_DIR) / 'src/main/webapp/pages'
-html_files = sorted(pages_dir.glob('**/*.html'))
-if PAGE_FILTER:
-    html_files = [f for f in html_files if f.parent.name in PAGE_FILTER]
-
-summary, all_counts = [], {}
-for html_path in html_files:
-    original = html_path.read_text(encoding='utf-8')
-    text, counts = original, {}
-    for rule_fn in RULE_FUNCS:
-        text, c = rule_fn(text)
-        for k, v in c.items():
-            counts[k] = counts.get(k, 0) + v
-    if sum(counts.values()) == 0:
-        continue
-    for k, v in counts.items():
-        all_counts[k] = all_counts.get(k, 0) + v
-    summary.append({'page': html_path.parent.name, 'file': str(html_path), 'changes': counts})
-    if not DRY_RUN:
-        html_path.write_text(text, encoding='utf-8')
-
-print(json.dumps({'summary': summary, 'totals': all_counts, 'dry_run': DRY_RUN}))
-```
-
-**4 · Run and clean up**
-
-```bash
-python3 "<PROJECT_DIR>/wm_comp_conv_tmp.py" "<PROJECT_DIR>" [--dry-run] [--pages "Page1,Page2"]
-```
-
-Parse the JSON output and store results in `COMP_COUNTS` for STEP 4.
-
-```bash
-rm -f "<PROJECT_DIR>/wm_comp_conv_tmp.py"
-```
-
----
-
-### STEP 4 · Write the conversion script and run it
+### STEP 3 · Write the conversion script and run it
 
 Write the Python 3 script below to `<PROJECT_DIR>/wm_grid_conv_tmp.py`, run it
 with `python3`, then delete it (`rm -f`). Parse its JSON output to build the summary.
@@ -619,6 +467,154 @@ rm -f "<PROJECT_DIR>/wm_grid_conv_tmp.py"
 ```
 ---
 
+### STEP 4 · Component Attribute & Variant Conversion
+
+> **This step is opt-in — always prompt the user before executing any part of it.**
+
+Ask the user:
+
+*"Would you also like to apply component attribute and variant enhancements (forms, lists, buttons, labels, icons, tables)? [Y/n]"*
+
+If the user declines, skip to STEP 5.
+
+---
+
+#### Determine project type
+
+1. If `PROJECT_TYPE` was already resolved during this execution (e.g. read from `.wmproject.properties` in a prior step), reuse that value.
+2. Otherwise read `<PROJECT_DIR>/.wmproject.properties` and extract the `type` line:
+   - `type=WEB` → `PROJECT_TYPE=web`
+   - `type=NATIVE_MOBILE` → `PROJECT_TYPE=mobile`
+   - If absent or unrecognised → default to `web` and warn the user: *"Could not detect project type — defaulting to web rules."*
+
+---
+
+#### Load conversion rules
+
+Resolve the rules directory based on `PROJECT_TYPE`:
+
+- `PROJECT_TYPE=web`    → `wm-component-conversion/assets/rules/web/`
+- `PROJECT_TYPE=mobile` → `wm-component-conversion/assets/rules/mobile/`
+
+Rules are organised into category subdirectories. Each subdirectory contains exactly one `Rule.md`:
+
+```
+<RULES_DIR>/
+  basic/Rule.md
+  advanced/Rule.md
+  charts/Rule.md
+  containers/Rule.md
+  data/Rule.md
+  dialogs/Rule.md
+  input/Rule.md
+  layout/Rule.md
+  navigation/Rule.md
+```
+
+**Scan every immediate subdirectory of `RULES_DIR` for a `Rule.md` and read each one in full.** Do not hardcode category names — discover them dynamically so any new category is picked up automatically.
+
+The union of all loaded `Rule.md` files defines the complete set of transformations to apply.
+
+If `RULES_DIR` does not exist or no `Rule.md` files are found, skip this step and warn: *"No component rules found for project type '`<PROJECT_TYPE>`'. Skipping component conversion."*
+
+---
+
+#### Execution
+
+Each `Rule.md` file carries its Python implementation in a `## Script` section. Read every Rule.md
+that was discovered in **Load conversion rules** (all are already in memory), then assemble and run
+one optimised temp script from those blocks. Do not hardcode the script.
+
+**1 · Read the `## Script` blocks from each Rule.md**
+
+For every Rule.md already loaded:
+- A single Rule.md may contain **multiple** `## Script` headings (e.g. `data/Rule.md` has 7 — form, liveform, livetable, table, list, card, livefilter). Process **every** one, not just the first.
+- For each `## Script` heading, extract the fenced Python code block (```` ```python … ``` ````) that immediately follows it. Equivalently: extract **every** ```` ```python ```` block in the file.
+- Read `# Execution order: N` from the first comment line of each block (default `99` if absent).
+- Collect one `(order, code_block)` pair per block.
+
+Sort all pairs by `order` ascending.
+
+**2 · Collect function names**
+
+Scan the sorted blocks for lines matching `def (apply_\w+_rules)\(text\):`.
+Preserve the sort order to build `RULE_FUNCS_LIST`.
+
+**3 · Assemble and write `<PROJECT_DIR>/wm_comp_conv_tmp.py`**
+
+Write the file in three parts:
+
+*Part 1 — shared header (verbatim):*
+```python
+#!/usr/bin/env python3
+import re, sys, json
+from pathlib import Path
+
+PROJECT_DIR = sys.argv[1]
+DRY_RUN     = '--dry-run' in sys.argv
+PAGE_FILTER = []
+if '--pages' in sys.argv:
+    idx = sys.argv.index('--pages')
+    if idx + 1 < len(sys.argv):
+        PAGE_FILTER = [p.strip() for p in sys.argv[idx + 1].split(',')]
+
+def parse_attrs(s):
+    return dict(re.findall(r'([\w-]+)="([^"]*)"', s))
+
+def build_attrs(d):
+    return ' '.join(f'{k}="{v}"' for k, v in d.items())
+
+def merge_class(existing, *new_cls):
+    parts = existing.split() if existing else []
+    for c in new_cls:
+        if c and c not in parts:
+            parts.append(c)
+    return ' '.join(parts)
+```
+
+*Part 2 — append each sorted code block verbatim.*
+
+*Part 3 — main loop (substitute `<RULE_FUNCS_LIST>` with the comma-separated names from step 2):*
+```python
+RULE_FUNCS = [<RULE_FUNCS_LIST>]
+
+pages_dir  = Path(PROJECT_DIR) / 'src/main/webapp/pages'
+html_files = sorted(pages_dir.glob('**/*.html'))
+if PAGE_FILTER:
+    html_files = [f for f in html_files if f.parent.name in PAGE_FILTER]
+
+summary, all_counts = [], {}
+for html_path in html_files:
+    original = html_path.read_text(encoding='utf-8')
+    text, counts = original, {}
+    for rule_fn in RULE_FUNCS:
+        text, c = rule_fn(text)
+        for k, v in c.items():
+            counts[k] = counts.get(k, 0) + v
+    if sum(counts.values()) == 0:
+        continue
+    for k, v in counts.items():
+        all_counts[k] = all_counts.get(k, 0) + v
+    summary.append({'page': html_path.parent.name, 'file': str(html_path), 'changes': counts})
+    if not DRY_RUN:
+        html_path.write_text(text, encoding='utf-8')
+
+print(json.dumps({'summary': summary, 'totals': all_counts, 'dry_run': DRY_RUN}))
+```
+
+**4 · Run and clean up**
+
+```bash
+python3 "<PROJECT_DIR>/wm_comp_conv_tmp.py" "<PROJECT_DIR>" [--dry-run] [--pages "Page1,Page2"]
+```
+
+Parse the JSON output and store results in `COMP_COUNTS` for STEP 4.
+
+```bash
+rm -f "<PROJECT_DIR>/wm_comp_conv_tmp.py"
+```
+
+---
 
 ### STEP 5 · Generate the importable ZIP (standalone only)
 

@@ -68,6 +68,6 @@ def apply_input_rules(text):
             counts['wm_chips'] += 1
         return f'<wm-chips {build_attrs(attrs)}>'
 
-    text = re.sub(r'<wm-chips\b([^>]*)>', patch_chips, text)
+    text = re.sub(r'<wm-chips\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_chips, text)
     return text, counts
 ```

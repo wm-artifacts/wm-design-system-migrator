@@ -71,7 +71,7 @@ def apply_layout_rules(text):
             counts['wm_right_panel'] += 1
         return f'<wm-right-panel {build_attrs(attrs)}>'
 
-    text = re.sub(r'<wm-left-panel\b([^>]*)>', patch_left_panel, text)
-    text = re.sub(r'<wm-right-panel\b([^>]*)>', patch_right_panel, text)
+    text = re.sub(r'<wm-left-panel\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_left_panel, text)
+    text = re.sub(r'<wm-right-panel\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_right_panel, text)
     return text, counts
 ```

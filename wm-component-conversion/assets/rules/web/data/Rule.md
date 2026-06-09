@@ -80,11 +80,11 @@ def apply_form_rules(text):
         attrs = parse_attrs(m.group(2))
         cols = attrs.get('columns', '')
         if cols and 'itemsperrow' not in attrs:
-            attrs['itemsperrow'] = f'xs-{cols} sm-{cols} md-{cols} lg-{cols}'
+            attrs['itemsperrow'] = f'xs-1 sm-{cols} md-{cols} lg-{cols}'
             counts['wm_form_itemsperrow'] += 1
         return f'<wm-form {build_attrs(attrs)}>'
 
-    text = re.sub(r'<(wm-form)\b([^>]*)>', patch_form, text)
+    text = re.sub(r'<(wm-form)(?!-)((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_form, text)
     return text, counts
 ```
 
@@ -165,11 +165,11 @@ def apply_liveform_rules(text):
         attrs = parse_attrs(m.group(1))
         cols = attrs.get('columns', '')
         if cols and 'itemsperrow' not in attrs:
-            attrs['itemsperrow'] = f'xs-{cols} sm-{cols} md-{cols} lg-{cols}'
+            attrs['itemsperrow'] = f'xs-1 sm-{cols} md-{cols} lg-{cols}'
             counts['wm_liveform_itemsperrow'] += 1
         return f'<wm-liveform {build_attrs(attrs)}>'
 
-    text = re.sub(r'<wm-liveform\b([^>]*)>', patch_liveform, text)
+    text = re.sub(r'<wm-liveform\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_liveform, text)
     return text, counts
 ```
 
@@ -231,14 +231,43 @@ Signature contract: `apply_livetable_rules(text) -> (text, counts_dict)`.
 def apply_livetable_rules(text):
     counts = {'wm_liveform_inline_itemsperrow': 0}
 
-    def patch_inline_liveform(m):
-        attrs = parse_attrs(m.group(1))
-        if attrs.get('formlayout') == 'inline' and 'itemsperrow' not in attrs:
-            attrs['itemsperrow'] = 'xs-2 sm-2 md-2 lg-2'
-            counts['wm_liveform_inline_itemsperrow'] += 1
-        return f'<wm-liveform {build_attrs(attrs)}>'
+    def find_parent_columns(text, pos):
+        """Walk tags before pos with a stack; check only the 2 immediate parents."""
+        preceding = text[:pos]
+        tag_re = re.compile(r'<(/?)([\w-]+)\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>')
+        stack = []                          # list of (tag_name, attrs_str)
+        for t in tag_re.finditer(preceding):
+            if t.group(1) == '/':           # closing tag
+                if stack and stack[-1][0] == t.group(2):
+                    stack.pop()
+            else:                           # opening tag
+                stack.append((t.group(2), t.group(3)))
+        # Check only the 2 immediate parents (top of stack)
+        for entry in reversed(stack[-2:]):
+            parent_attrs = parse_attrs(entry[1])
+            cols = parent_attrs.get('columns', '')
+            if cols:
+                return cols
+        return ''
 
-    text = re.sub(r'<wm-liveform\b([^>]*)>', patch_inline_liveform, text)
+    def patch_livetable_block(m):
+        lt_attrs_str = m.group(1)
+        block_content = m.group(2)
+
+        # columns from the parent of wm-livetable; default N=2
+        cols = find_parent_columns(text, m.start()) or '2'
+
+        def patch_inner_liveform(lf_match):
+            attrs = parse_attrs(lf_match.group(1))
+            if attrs.get('formlayout') == 'inline' and 'itemsperrow' not in attrs:
+                attrs['itemsperrow'] = f'xs-1 sm-{cols} md-{cols} lg-{cols}'
+                counts['wm_liveform_inline_itemsperrow'] += 1
+            return f'<wm-liveform {build_attrs(attrs)}>'
+
+        block_content = re.sub(r'<wm-liveform\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_inner_liveform, block_content)
+        return f'<wm-livetable{lt_attrs_str}>{block_content}'
+
+    text = re.sub(r'<wm-livetable\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>(.*?)(?=</wm-livetable>)', patch_livetable_block, text, flags=re.DOTALL)
     return text, counts
 ```
 
@@ -294,7 +323,7 @@ def apply_datatable_rules(text):
             counts['wm_table'] += 1
         return f'<wm-table {build_attrs(attrs)}>'
 
-    text = re.sub(r'<wm-table(?!-)([^>]*)>', patch_table, text)
+    text = re.sub(r'<wm-table(?!-)((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_table, text)
     return text, counts
 ```
 
@@ -347,6 +376,8 @@ Add flex attributes (if not already present):
 - `alignment="top-left"`
 - `gap="4"`
 - `width="fill"`
+- `height="56px"`
+- `padding="12px"`
 
 > **Note:** `class="media-left"` and `class="media-body"` on any child elements inside the listtemplate are stripped.
 
@@ -362,6 +393,13 @@ Signature contract: `apply_list_rules(text) -> (text, counts_dict)`.
 
 def apply_list_rules(text):
     counts = {'wm_list': 0, 'wm_listtemplate': 0}
+
+    # Card-variant lists/templates (a <wm-listtemplate> whose content contains a <wm-card>)
+    # are handled by apply_card_rules (order 7). They must be left untouched here, so the
+    # negative lookaheads below skip any list/template that has a wm-card descendant.
+    # The tempered token stops the scan at the next list/listtemplate boundary so it never
+    # leaks into a sibling list.
+    CARD_CHILD = r'(?:(?!<wm-(?:list|listtemplate)\b).)*?<wm-card\b'
 
     def patch_list(m):
         attrs = parse_attrs(m.group(1))
@@ -379,11 +417,21 @@ def apply_list_rules(text):
         attrs.setdefault('alignment', 'top-left')
         attrs.setdefault('gap', '4')
         attrs.setdefault('width', 'fill')
+        attrs.setdefault('height', 'fill')
+        attrs.setdefault('padding', '12px')
         counts['wm_listtemplate'] += 1
         return f'<wm-listtemplate {build_attrs(attrs)}>'
 
-    text = re.sub(r'<wm-list\b([^>]*)>', patch_list, text)
-    text = re.sub(r'<wm-listtemplate\b([^>]*)>', patch_listtemplate, text)
+    # Skip card-variant lists: <wm-list> directly wrapping a <wm-listtemplate> that holds a <wm-card>.
+    text = re.sub(
+        r'<wm-list\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>'
+        r'(?!\s*<wm-listtemplate\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*>' + CARD_CHILD + r')',
+        patch_list, text, flags=re.DOTALL)
+    # Skip card-variant templates: <wm-listtemplate> whose content holds a <wm-card>.
+    text = re.sub(
+        r'<wm-listtemplate\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>'
+        r'(?!' + CARD_CHILD + r')',
+        patch_listtemplate, text, flags=re.DOTALL)
     text = re.sub(r'\s+class="(?:media-left|media-body)"', '', text)
     return text, counts
 ```
@@ -422,7 +470,7 @@ DS:
     statehandler="URL" ...>
   <wm-listtemplate layout="media" direction="row" alignment="top-left" gap="4"
       width="280px" height="260px" padding="12px" name="listtemplate1">
-    <!-- content directly (no wm-card wrappers) -->
+    <!-- content directly (wm-container wrappers) -->
   </wm-listtemplate>
 </wm-list>
 ```
@@ -446,14 +494,11 @@ Set explicit card dimensions and flex attributes:
 - `direction="row"`
 - `alignment="top-left"`
 - `gap="4"`
-- `width="280px"`
-- `height="260px"`
-- `padding="12px"`
+## Convert card wrapper elements into <wm-container>
 
-## Remove card wrapper elements
-
-- Remove opening and closing tags of `<wm-card>`, `<wm-card-content>`, `<wm-card-footer>`.
-- Preserve all child content inside them.
+- Replace opening and closing tags of `<wm-card>`, `<wm-card-content>`, `<wm-card-footer>` with `<wm-container>`.
+- Prserve all child elemnts inside them. Preserve all attributes of the wrapper elements.
+- Replace the 'picturesource' attribute with 'backgroundimage' attribute.
 
 > **Note:** The `<wm-listtemplate>` `width`, `height`, and `padding` values above are defaults from the DS drag-and-drop template. Adjust per actual design requirements.
 
@@ -465,22 +510,69 @@ Signature contract: `apply_card_rules(text) -> (text, counts_dict)`.
 
 ```python
 # Execution order: 7
-# Components: wm-card, wm-card-content, wm-card-footer (removal only)
-# Note: wm-list and wm-listtemplate for card layout are handled by apply_list_rules (Rule 06).
-# Card-specific wm-list overrides (itemsperrow="auto", direction="row", wrap="true", etc.)
-# must be applied manually or detected via template-name="Media Post" heuristic.
+# Components: wm-card, wm-card-content, wm-card-footer (converted to wm-container)
+# Also patches wm-list and wm-listtemplate that have wm-card as a child (card variant).
+# Runs AFTER apply_list_rules (order 6). apply_list_rules deliberately SKIPS card-variant
+# wm-list / wm-listtemplate (detected by a wm-card descendant), so the card-specific layout
+# values set here are the only ones applied to card lists — no conflict, no double-patching.
+# Non-card wm-list / wm-listtemplate are untouched here; apply_list_rules handles them.
+# Assumption: wm-list does not nest inside wm-list in practice.
 
 def apply_card_rules(text):
-    counts = {'wm_card_removed': 0}
+    counts = {'wm_card_converted': 0, 'wm_list_card': 0, 'wm_listtemplate_card': 0}
 
-    def remove_card_open(m):
-        counts['wm_card_removed'] += 1
-        return ''
+    # 1. Patch opening <wm-list> tags that are the direct wrapper of a card-variant template
+    def patch_list_open(m):
+        attrs = parse_attrs(m.group(1))
+        attrs.pop('listclass', None)
+        attrs.setdefault('direction', 'row')
+        attrs.setdefault('alignment', 'top-left')
+        attrs.setdefault('gap', '4')
+        attrs.setdefault('columngap', '4')
+        attrs.setdefault('wrap', 'true')
+        attrs.setdefault('itemsperrow', 'auto')
+        counts['wm_list_card'] += 1
+        return f'<wm-list {build_attrs(attrs)}>'
 
-    # Remove opening tags for card wrapper elements
-    text = re.sub(r'<(?:wm-card|wm-card-content|wm-card-footer)\b[^>]*>', remove_card_open, text)
-    # Remove closing tags for card wrapper elements
-    text = re.sub(r'</(?:wm-card|wm-card-content|wm-card-footer)>', '', text)
+    list_pattern = r'<wm-list\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>(?=\s*<wm-listtemplate\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*>(?:(?!<wm-(?:list|listtemplate)\b).)*?<wm-card\b)'
+    text = re.sub(list_pattern, patch_list_open, text, flags=re.DOTALL)
+
+    # 2. Patch opening <wm-listtemplate> tags that are the direct parent of a card
+    def patch_listtemplate_open(m):
+        attrs = parse_attrs(m.group(1))
+        attrs.setdefault('direction', 'row')
+        attrs.setdefault('alignment', 'top-left')
+        attrs.setdefault('gap', '4')
+        attrs.setdefault('width', '280px')
+        attrs.setdefault('height', '260px')
+        attrs.setdefault('padding', '12px')
+        counts['wm_listtemplate_card'] += 1
+        return f'<wm-listtemplate {build_attrs(attrs)}>'
+
+    template_pattern = r'<wm-listtemplate\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>(?=(?:(?!<wm-(?:list|listtemplate)\b).)*?<wm-card\b)'
+    text = re.sub(template_pattern, patch_listtemplate_open, text, flags=re.DOTALL)
+
+    # 3. Convert all cards to wm-container 
+    def patch_card_elements(m):
+        tag_name = m.group(1)
+        attrs = parse_attrs(m.group(2))
+        class_map = {
+            'wm-card': 'app-card card app-panel',
+            'wm-card-content': 'app-card-content card-body card-block',
+            'wm-card-footer': 'app-card-footer card-footer'
+        }
+        default_cls = class_map.get(tag_name, '')
+        attrs['class'] = merge_class(attrs.get('class', ''), default_cls)
+        if 'picturesource' in attrs:
+            attrs['backgroundimage'] = attrs.pop('picturesource')
+        counts['wm_card_converted'] += 1
+        return f'<wm-container {build_attrs(attrs)}>'
+
+    # Global replacement for opening tags
+    text = re.sub(r'<(wm-card-content|wm-card-footer|wm-card)\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_card_elements, text)
+    # Global replacement for closing tags (relaxed regex)
+    text = re.sub(r'</(wm-card|wm-card-content|wm-card-footer)\s*>', '</wm-container>', text)
+
     return text, counts
 ```
 
@@ -561,10 +653,10 @@ def apply_livefilter_rules(text):
         attrs = parse_attrs(m.group(1))
         cols = attrs.get('columns', '')
         if cols and 'itemsperrow' not in attrs:
-            attrs['itemsperrow'] = f'xs-{cols} sm-{cols} md-{cols} lg-{cols}'
+            attrs['itemsperrow'] = f'xs-1 sm-{cols} md-{cols} lg-{cols}'
             counts['wm_livefilter_itemsperrow'] += 1
         return f'<wm-livefilter {build_attrs(attrs)}>'
 
-    text = re.sub(r'<wm-livefilter\b([^>]*)>', patch_livefilter, text)
+    text = re.sub(r'<wm-livefilter\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_livefilter, text)
     return text, counts
 ```
