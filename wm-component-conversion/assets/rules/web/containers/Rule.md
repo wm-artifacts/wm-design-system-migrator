@@ -97,6 +97,13 @@ Use `parse_attrs`, `build_attrs`, and `merge_class` — they are injected by the
 # Execution order: 3
 # Components: wm-container, wm-accordion, wm-panel, wm-tile, wm-wizard
 
+CARD_CLASSES = {
+    'wm-card':         'app-card card app-panel',
+    'wm-card-content': 'app-card-content card-body card-block',
+    'wm-card-footer':  'app-card-footer card-footer',
+}
+_CARD_CLASS_SET = {c for v in CARD_CLASSES.values() for c in v.split()}
+
 def apply_containers_rules(text):
     counts = {
         'wm_container': 0,
@@ -113,7 +120,9 @@ def apply_containers_rules(text):
             attrs.setdefault('alignment', 'top-left')
             attrs.setdefault('gap', '4')
             attrs.setdefault('width', 'fill')
-            attrs['class'] = merge_class(attrs.get('class', ''), 'app-container-default')
+            existing_classes = set(attrs.get('class', '').split())
+            if not existing_classes & _CARD_CLASS_SET:
+                attrs['class'] = merge_class(attrs.get('class', ''), 'app-container-default')
             attrs['variant'] = 'default'
             counts['wm_container'] += 1
         return f'<wm-container {build_attrs(attrs)}>'
@@ -149,14 +158,16 @@ def apply_containers_rules(text):
             if 'number' in cls.split():
                 attrs['class'] = merge_class(cls, 'wizard-number')
                 attrs['variant'] = 'number'
-                counts['wm_wizard'] += 1
+            else:
+                attrs['variant'] = 'default'
+            counts['wm_wizard'] += 1
         return f'<wm-wizard {build_attrs(attrs)}>'
 
-    text = re.sub(r'<wm-container\b([^>]*)>', patch_container, text)
-    text = re.sub(r'<wm-accordion\b([^>]*)>', patch_accordion, text)
+    text = re.sub(r'<wm-container\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_container, text)
+    text = re.sub(r'<wm-accordion\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_accordion, text)
     # Use (?!-) to avoid matching wm-panel-footer
-    text = re.sub(r'<wm-panel\b(?!-)([^>]*)>', patch_panel, text)
-    text = re.sub(r'<wm-tile\b([^>]*)>', patch_tile, text)
-    text = re.sub(r'<wm-wizard\b([^>]*)>', patch_wizard, text)
+    text = re.sub(r'<wm-panel\b(?!-)((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_panel, text)
+    text = re.sub(r'<wm-tile\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_tile, text)
+    text = re.sub(r'<wm-wizard\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_wizard, text)
     return text, counts
 ```

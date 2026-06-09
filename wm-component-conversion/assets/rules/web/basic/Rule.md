@@ -48,15 +48,17 @@ Add specific Font Awesome size classes and map the variant to match:
 
 ## Images/Pictures (`<wm-picture>`)
 
-- **NDS Pattern:** Handled shapes natively via `shape="circle"`.
-- **DS Pattern:** Replaces the `shape` property with CSS classes and sets a crop mode.
+- **NDS Pattern:** Handled shapes natively via `shape="rounded|circle|thumbnail"`.
+- **DS Pattern:** Replaces `shape` with a CSS class and variant, and sets crop mode.
 
 ### Action
 
-1. Remove `shape="circle"`.
-2. Inject `resizemode="cover"`.
-3. Add `class="img-circle img-rounded"`.
-4. Add `variant="default:rounded"`.
+1. Read `shape` and map to class + variant (remove `shape` after):
+   - `rounded` → `class="img-rounded"`, `variant="default:rounded"`
+   - `circle` → `class="img-circle"`, `variant="default:circle"`
+   - `thumbnail` → `class="img-thumbnail"`, `variant="default:standard"`
+   - _(absent)_ → default to `img-rounded` / `default:rounded`
+2. Inject `resizemode="cover"` (if not already set).
 
 ---
 
@@ -228,7 +230,9 @@ def apply_basic_rules(text):
         size = next((s for s in LABEL_SIZES if s in cls.split()), None)
         if size:
             attrs['variant'] = f'default:{size}'
-            counts['label'] += 1
+        else:
+            attrs['variant'] = 'default:default'
+        counts['label'] += 1
         return f'<wm-label {build_attrs(attrs)}>'
 
     def patch_icon(m):
@@ -240,10 +244,16 @@ def apply_basic_rules(text):
 
     def patch_picture(m):
         attrs = parse_attrs(m.group(1))
-        attrs.pop('shape', None)
-        attrs['resizemode'] = 'cover'
-        attrs['class'] = merge_class(attrs.get('class', ''), 'img-rounded')
-        attrs['variant'] = 'default:rounded'
+        shape = attrs.pop('shape', None)
+        shape_map = {
+            'rounded':   ('img-rounded',    'default:rounded'),
+            'circle':    ('img-circle',     'default:circle'),
+            'thumbnail': ('img-standard',  'default:standard'),
+        }
+        cls_suffix, variant = shape_map.get(shape, ('img-rounded', 'default:rounded'))
+        attrs.setdefault('resizemode', 'cover')
+        attrs['class'] = merge_class(attrs.get('class', ''), cls_suffix)
+        attrs['variant'] = variant
         counts['picture'] += 1
         return f'<wm-picture {build_attrs(attrs)}>'
 
@@ -273,12 +283,12 @@ def apply_basic_rules(text):
             counts['wm_progress_circle'] += 1
         return f'<wm-progress-circle {build_attrs(attrs)}>'
 
-    text = re.sub(r'<(wm-button|wm-form-action)\b([^>]*)>', patch_button, text)
-    text = re.sub(r'<wm-label\b([^>]*)>', patch_label, text)
-    text = re.sub(r'<wm-icon\b([^>]*)>', patch_icon, text)
-    text = re.sub(r'<wm-picture\b([^>]*?)>', patch_picture, text)
-    text = re.sub(r'<wm-message\b([^>]*)>', patch_message, text)
-    text = re.sub(r'<wm-progress-bar\b([^>]*)>', patch_progress_bar, text)
-    text = re.sub(r'<wm-progress-circle\b([^>]*)>', patch_progress_circle, text)
+    text = re.sub(r'<(wm-button|wm-form-action)\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_button, text)
+    text = re.sub(r'<wm-label\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_label, text)
+    text = re.sub(r'<wm-icon\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_icon, text)
+    text = re.sub(r'<wm-picture\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_picture, text)
+    text = re.sub(r'<wm-message\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_message, text)
+    text = re.sub(r'<wm-progress-bar\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_progress_bar, text)
+    text = re.sub(r'<wm-progress-circle\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_progress_circle, text)
     return text, counts
 ```
