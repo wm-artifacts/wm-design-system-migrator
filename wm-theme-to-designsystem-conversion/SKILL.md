@@ -222,11 +222,15 @@ Do you want to use this font family in the design system?
 
 ---
 
-### STEP 5 · Build override CSS
+### STEP 5 · Build override CSS and Global Token JSON Files
+
+**Output files:**
+1. **CSS variables:** `<PROJECT_DIR>/src/main/webapp/design-tokens/app.override.css`
+2. **Global token overrides:** `<PROJECT_DIR>/src/main/webapp/design-tokens/overrides/global/color/color.light.json`
+
+#### 5.1 — CSS Variables (app.override.css)
 
 **Output file:** `<PROJECT_DIR>/src/main/webapp/design-tokens/app.override.css`
-
-#### Structure
 
 ```css
 /**
@@ -245,11 +249,120 @@ Do you want to use this font family in the design system?
   
   /* Color Overrides */
   --wm-color-primary: #FF7250;
+  --wm-color-secondary: #656DF9;
   --wm-color-error: #F44336;
   
   /* Spacing Overrides */
   --wm-gap-base: 8px;
   --wm-padding-base: 16px;
+}
+```
+
+#### 5.2 — Global Token JSON Override Files
+
+**For each global token category extracted, create corresponding JSON override files.**
+
+**File paths:**
+- Colors: `src/main/webapp/design-tokens/overrides/global/color/color.light.json`
+- Colors (dark): `src/main/webapp/design-tokens/overrides/global/color/color.dark.json`
+- Typography: `src/main/webapp/design-tokens/overrides/global/typography/typography.json`
+- Spacing: `src/main/webapp/design-tokens/overrides/global/spacing/spacing.json`
+
+**Structure reference:** Match the structure of foundation CSS global token files:
+- Reference: `@wavemaker/foundation-css/src/tokens/web/global/colors/color.json`
+- Apply same structure to overrides: `src/main/webapp/design-tokens/overrides/global/color/color.light.json`
+
+**Example: color.light.json** (extracted from project's style.css)
+
+```json
+{
+  "color": {
+    "primary": {
+      "@": {
+        "value": "#FF7250",
+        "attributes": { "subtype": "color" }
+      },
+      "container": {
+        "@": {
+          "value": "#ffe3dc",
+          "attributes": { "subtype": "color" }
+        }
+      },
+      "fixed": {
+        "@": {
+          "value": "#ffe8e2",
+          "attributes": { "subtype": "color" }
+        },
+        "dim": {
+          "value": "#ffe8e2",
+          "attributes": { "subtype": "color" }
+        }
+      }
+    },
+    "on-primary": {
+      "@": {
+        "value": "#FFFFFF",
+        "attributes": { "subtype": "color" }
+      },
+      "container": {
+        "@": {
+          "value": "#2d201d",
+          "attributes": { "subtype": "color" }
+        }
+      }
+    },
+    "secondary": {
+      "@": {
+        "value": "#656DF9",
+        "attributes": { "subtype": "color" }
+      },
+      "container": {
+        "@": {
+          "value": "#e2e3ff",
+          "attributes": { "subtype": "color" }
+        }
+      }
+    },
+    "error": {
+      "@": {
+        "value": "#F44336",
+        "attributes": { "subtype": "color" }
+      }
+    }
+  }
+}
+```
+
+**Extraction and Mapping Rules for Global Colors:**
+
+| Color Type | CSS Variable | Foundation Path | JSON Value | Example |
+|---|---|---|---|---|
+| **Primary** | `--primary-color` | `color.primary.@.value` | Brand color | `#FF7250` |
+| **Primary Container** | `--primary-light` | `color.primary.container.@.value` | Light variant | `#ffe3dc` |
+| **Secondary** | `--secondary-color` | `color.secondary.@.value` | Accent color | `#656DF9` |
+| **Error** | `--error-color` | `color.error.@.value` | Error red | `#F44336` |
+| **Success** | `--success-color` | `color.success.@.value` | Success green | `#4CAF50` |
+| **Surface** | `--bg-color` | `color.surface.@.value` | Background | `#FFFFFF` |
+| **On-Surface** | `--text-color` | `color.on-surface.@.value` | Text color | `#000000` |
+
+**Color.dark.json** (if dark theme colors differ)
+
+```json
+{
+  "color": {
+    "primary": {
+      "@": {
+        "value": "#d0bcfe",
+        "attributes": { "subtype": "color" }
+      },
+      "container": {
+        "@": {
+          "value": "#4f378b",
+          "attributes": { "subtype": "color" }
+        }
+      }
+    }
+  }
 }
 ```
 
@@ -264,16 +377,56 @@ Do you want to use this font family in the design system?
 
 ---
 
-### STEP 6 · Create design-tokens folder
+### STEP 6 · Create design-tokens folder structure
 
-**If missing:**
+**Create all required directories:**
+
 ```bash
+# Main design-tokens folder
 mkdir -p "<PROJECT_DIR>/src/main/webapp/design-tokens/"
+
+# Global token overrides (color, typography, spacing)
+mkdir -p "<PROJECT_DIR>/src/main/webapp/design-tokens/overrides/global/color/"
+mkdir -p "<PROJECT_DIR>/src/main/webapp/design-tokens/overrides/global/typography/"
+mkdir -p "<PROJECT_DIR>/src/main/webapp/design-tokens/overrides/global/spacing/"
+
+# Component variant overrides
+mkdir -p "<PROJECT_DIR>/src/main/webapp/design-tokens/overrides/components/"
 ```
 
-**If `app.override.css` exists:**
-- Append new tokens (don't overwrite)
-- Add separator: `/* --- Legacy theme tokens appended <DATE> --- */`
+**Folder structure overview:**
+
+```
+src/main/webapp/design-tokens/
+├── app.override.css                         (CSS variables)
+└── overrides/
+    ├── global/
+    │   ├── color/
+    │   │   ├── color.light.json             (Light mode color tokens)
+    │   │   └── color.dark.json              (Dark mode color tokens)
+    │   ├── typography/
+    │   │   └── typography.json              (Custom typography scales)
+    │   └── spacing/
+    │       └── spacing.json                 (Custom spacing tokens)
+    └── components/
+        ├── button/
+        │   └── button.json                  (Button variant appearances)
+        ├── label/
+        │   └── label.json                   (Label variant appearances)
+        ├── anchor/
+        │   └── anchor.json                  (Anchor variant appearances)
+        └── [other basic components]/
+            └── [component].json
+```
+
+**File handling rules:**
+
+| File | Action |
+|---|---|
+| `app.override.css` | If exists → Append with separator comment<br>If missing → Create new |
+| `color.light.json` | If exists → Merge extracted colors<br>If missing → Create new |
+| `color.dark.json` | If exists → Merge extracted colors<br>If missing → Create if dark theme found |
+| Component JSON | If exists → Add new variants as siblings<br>If missing → Create new |
 
 ---
 
@@ -319,73 +472,543 @@ Next Steps:
 
 ---
 
-### STEP 8 · Extract Component Variants (Basic Components Only)
+## ⚠️ CRITICAL: Output Generation Logic (Must Execute)
 
-**Focus on basic components from foundation CSS.**
+**These steps MUST be executed or outputs will be missing:**
 
-#### 8.1 — Scan Sources (in order)
+### If Icon Classes Extracted (STEP 7.5.4):
+```
+THEN {
+  ✅ STEP 7.5.5: Append @font-face + icon base selector + all icon classes to app-override.css
+  
+  If NOT appended:
+    ❌ Icon CSS variables unavailable
+    ❌ Icon fonts won't render
+    ❌ 357 icon definitions lost
+}
+```
+
+### If Component Variants Found (STEP 8.3):
+```
+FOR EACH variant {
+  ✅ STEP 8.4: Create/update component JSON file
+    └── Path: src/main/webapp/design-tokens/overrides/components/<component>/<component>.json
+    └── Add variant to "appearances" object
+  
+  ✅ STEP 8.5: Append component CSS to app-override.css
+    └── Add .wm-app .variant-class { --wm-component-*: ... }
+    └── Add state rules (:hover, :focus, :active, [disabled])
+}
+
+If NOT created:
+  ❌ Component variant JSON missing (89 variants lost)
+  ❌ Component variant CSS variables unavailable
+  ❌ Custom appearances won't work
+```
+
+### Implementation Checklist:
+
+| Output | Condition | Action | File Created/Updated |
+|---|---|---|---|
+| **Icon CSS** | Icon classes found | Append to app-override.css | app-override.css |
+| **Component JSON** | Variant found | Create/update | `overrides/components/<name>/<name>.json` |
+| **Component CSS** | Variant found | Append to app-override.css | app-override.css |
+
+**MUST verify after execution:**
+- ✅ app-override.css has icon @font-face section
+- ✅ app-override.css has icon class rules (.wm-app [class^="pr-"])
+- ✅ app-override.css has 357+ icon definitions
+- ✅ 6 component JSON files created in overrides/components/
+- ✅ app-override.css has component variant CSS for 89 variants
+
+---
+
+### STEP 7.5 · Extract Custom Icon Fonts
+
+**Extract custom icon font files and CSS from legacy theme.**
+
+#### 7.5.1 — Locate Icon Font Files
+
+**Search in theme folder for custom icon files:**
+
+| File Type | Pattern | Location |
+|---|---|---|
+| Embedded OpenType | `icomoon.eot*` | `<THEME_DIR>/` or `<THEME_DIR>/icon-fonts/` |
+| TrueType Font | `icomoon.ttf*` | `<THEME_DIR>/` or `<THEME_DIR>/icon-fonts/` |
+| Web Open Font Format | `icomoon.woff*` | `<THEME_DIR>/` or `<THEME_DIR>/icon-fonts/` |
+| SVG Font | `icomoon.svg*` | `<THEME_DIR>/` or `<THEME_DIR>/icon-fonts/` |
+
+**Search algorithm:**
+```
+For each theme directory:
+  1. Check: <THEME_DIR>/icomoon.*
+  2. Check: <THEME_DIR>/icon-fonts/icomoon.*
+  3. Check: <THEME_DIR>/fonts/icomoon.*
+  4. If found → Mark for copying
+```
+
+#### 7.5.2 — Copy Icon Files to Project
+
+**When icon files are found, copy to project:**
+
+```bash
+# Source: Theme folder
+<THEME_DIR>/icomoon.eot
+<THEME_DIR>/icomoon.ttf
+<THEME_DIR>/icomoon.woff
+<THEME_DIR>/icomoon.svg
+
+# Destination: Project resources
+mkdir -p "<PROJECT_DIR>/src/main/webapp/resources/custom-icon/"
+
+cp <THEME_DIR>/icomoon.* "<PROJECT_DIR>/src/main/webapp/resources/custom-icon/"
+```
+
+**Destination structure:**
+```
+src/main/webapp/resources/
+└── custom-icon/
+    ├── icomoon.eot
+    ├── icomoon.ttf
+    ├── icomoon.woff
+    └── icomoon.svg
+```
+
+#### 7.5.3 — Extract @font-face Declaration
+
+**Search in style.css for icomoon @font-face block:**
+
+```css
+@font-face {
+  font-family: 'icomoon';
+  src: url('icon-fonts/icomoon.eot?mdouv4');
+  src: url('icon-fonts/icomoon.eot?mdouv4#iefix') format('embedded-opentype'),
+       url('icon-fonts/icomoon.ttf?mdouv4') format('truetype'),
+       url('icon-fonts/icomoon.woff?mdouv4') format('woff'),
+       url('icon-fonts/icomoon.svg?mdouv4#icomoon') format('svg');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+```
+
+**Extract and update URL paths:**
+- Original: `url('icon-fonts/icomoon.eot?mdouv4')`
+- Updated: `url('/resources/custom-icon/icomoon.eot')`
+
+#### 7.5.4 — Extract Icon CSS Classes
+
+**Search in style.css for icon selectors and definitions:**
+
+**Selector patterns to match:**
+```css
+/* Base selector pattern */
+.wm-app [class^="pr-"],
+.wm-app [class*=" pr-"] {
+  font-family: 'icomoon' !important;
+  /* ... shared properties ... */
+}
+
+/* Individual icon classes */
+.wm-app .pr-token:before { content: "\e95a"; }
+.wm-app .pr-arrow-dl:before { content: "\e94d"; }
+.wm-app .pr-pages:before { content: "\e94b"; }
+/* ... more icons ... */
+```
+
+**Extraction rules:**
+
+| Element | Action | Example |
+|---|---|---|
+| **Base selector** | Extract as-is | `.wm-app [class^="pr-"], .wm-app [class*=" pr-"]` |
+| **Shared properties** | Copy all properties | `font-family`, `font-style`, `font-weight`, `-webkit-font-smoothing`, etc. |
+| **Individual icons** | Extract class name + content | `.pr-token:before { content: "\e95a"; }` |
+| **Font size override** | Preserve if present | `.pr-prefab-v:before { font-size: 19px; }` |
+
+#### 7.5.5 — MANDATORY: Append Icon CSS to app-override.css
+
+**✅ REQUIRED: If icon classes were extracted in 7.5.4, MUST append to app-override.css**
+
+**DO NOT SKIP THIS STEP** — Icon CSS will not be available if not appended.
+
+**Pre-Append Checklist:**
+- ✅ Icon files copied to `src/main/webapp/resources/custom-icon/`
+- ✅ Icon class count > 0 (icons found)
+- ✅ app-override.css exists or will be created
+
+**Append Instructions (STEP-BY-STEP):**
+
+1. **Open/Create file:** `<PROJECT_DIR>/src/main/webapp/design-tokens/app-override.css`
+
+2. **Add separator comment:**
+   ```css
+   /* ============================================================
+    * Custom Icon Fonts (migrated from legacy theme)
+    * ============================================================ */
+   ```
+
+3. **Add @font-face block** (from STEP 7.5.3):
+   ```css
+   @font-face {
+     font-family: 'icomoon';
+     src: url('/resources/custom-icon/icomoon.eot');
+     src: url('/resources/custom-icon/icomoon.eot#iefix') format('embedded-opentype'),
+          url('/resources/custom-icon/icomoon.ttf') format('truetype'),
+          url('/resources/custom-icon/icomoon.woff') format('woff'),
+          url('/resources/custom-icon/icomoon.svg#icomoon') format('svg');
+     font-weight: normal;
+     font-style: normal;
+     font-display: block;
+   }
+   ```
+
+4. **Add base selector** (shared styles for all icons):
+   ```css
+   /* Icon Base Styles */
+   .wm-app [class^="pr-"],
+   .wm-app [class*=" pr-"] {
+     font-family: 'icomoon' !important;
+     speak: never;
+     font-style: normal;
+     font-weight: normal;
+     font-variant: normal;
+     text-transform: none;
+     line-height: 1;
+     -webkit-font-smoothing: antialiased;
+     -moz-osx-font-smoothing: grayscale;
+   }
+   ```
+
+5. **Add individual icon definitions** (from STEP 7.5.4):
+   ```css
+   /* Icon Definitions */
+   .wm-app .pr-token:before { content: "\e95a"; }
+   .wm-app .pr-arrow-dl:before { content: "\e94d"; }
+   .wm-app .pr-pages:before { content: "\e94b"; }
+   /* ... all 357 icon classes ... */
+   ```
+
+6. **Verify appended:**
+   - Icon CSS section exists in app-override.css
+   - @font-face present with correct paths
+   - Base selector present
+   - All icon definitions present (357 rules)
+
+**Post-Append Verification:**
+- ✅ File size increased (icons added)
+- ✅ Line count increased (by ~363 lines: 1 separator + 1 @font-face + ~20 base styles + 357 icons)
+- ✅ No syntax errors in CSS
+- ✅ All icons can be referenced via `.pr-*` class names
+
+**Append all extracted icon CSS to app-override.css:**
+
+```css
+/* ============================================================
+ * Custom Icon Fonts (migrated from legacy theme)
+ * ============================================================ */
+
+@font-face {
+  font-family: 'icomoon';
+  src: url('/resources/custom-icon/icomoon.eot');
+  src: url('/resources/custom-icon/icomoon.eot#iefix') format('embedded-opentype'),
+       url('/resources/custom-icon/icomoon.ttf') format('truetype'),
+       url('/resources/custom-icon/icomoon.woff') format('woff'),
+       url('/resources/custom-icon/icomoon.svg#icomoon') format('svg');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+/* Icon Base Styles */
+.wm-app [class^="pr-"],
+.wm-app [class*=" pr-"] {
+  font-family: 'icomoon' !important;
+  speak: never;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Icon Definitions */
+.wm-app .pr-token:before {
+  content: "\e95a";
+}
+
+.wm-app .pr-arrow-dl:before {
+  content: "\e94d";
+}
+
+.wm-app .pr-pages:before {
+  content: "\e94b";
+}
+
+.wm-app .pr-connector:before {
+  content: "\e951";
+}
+
+/* ... all icon classes ... */
+
+.wm-app .pr-prefab-v:before {
+  content: "\e939";
+  font-size: 19px;  /* Preserve any custom font-size */
+}
+```
+
+#### 7.5.6 — Report Extracted Icons
+
+```
+Custom Icon Fonts Extracted:
+  ✓ Font files copied: 4 files (eot, ttf, woff, svg)
+    • src/main/webapp/resources/custom-icon/icomoon.eot
+    • src/main/webapp/resources/custom-icon/icomoon.ttf
+    • src/main/webapp/resources/custom-icon/icomoon.woff
+    • src/main/webapp/resources/custom-icon/icomoon.svg
+  
+  ✓ @font-face declaration extracted and appended to app.override.css
+    • Updated URLs: icon-fonts/ → /resources/custom-icon/
+  
+  ✓ Icon classes extracted: 97 icon definitions
+    • Base selector: .wm-app [class^="pr-"], .wm-app [class*=" pr-"]
+    • Icon prefix: pr- (e.g., pr-token, pr-arrow-dl, pr-pages)
+    • Special cases: 1 (pr-prefab-v with custom font-size)
+  
+  ✓ Appended to app.override.css: @font-face + base styles + 97 icon definitions
+```
+
+---
+
+### STEP 8 · Extract Component Variants (Selected Components)
+
+**Extract variants only for user-selected components from foundation CSS.**
+
+#### 8.0 — Selected Components (User Configuration)
+
+**Process ONLY these selected components:**
+
+1. button
+2. label
+3. list
+4. anchor
+5. icon
+6. picture
+7. container
+8. spinner
+9. cards
+10. panel
+11. data-table
+12. nav
+13. tile
+14. tabs
+15. switch
+16. form-controls
+
+#### 8.1 — Read Component Metadata from Foundation CSS
+
+**For EACH selected component:**
+
+1. **Read component README.md:**
+   ```
+   @wavemaker/foundation-css/src/tokens/web/components/{component}/Readme.md
+   ```
+   - Lists all appearances and variants
+   - Example: button has `btn-filled`, `btn-outlined`, `btn-text`, `btn-transparent`
+
+2. **Read component JSON:**
+   ```
+   @wavemaker/foundation-css/src/tokens/web/components/{component}/{component}.json
+   ```
+   - Contains component structure
+   - **Extract base selectors:**
+     ```json
+     "meta": {
+       "mapping": {
+         "selector": {
+           "web": ".app-button",
+           "mobile": ".app-button"
+         }
+       }
+     }
+     ```
+   - Store selector: `.app-button` (for button component)
+
+3. **Build Component Selector Map:**
+   ```
+   COMPONENT_SELECTOR_MAP = {
+     "button": [".btn", ".app-button"],
+     "label": [".label", ".app-label"],
+     "list": [".list", ".app-list"],
+     "anchor": [".anchor", ".app-anchor"],
+     "icon": [".icon", ".app-icon"],
+     ...
+   }
+   ```
+
+#### 8.2 — Scan Sources (in order)
 
 | Source | Priority | Status |
 |---|---|---|
 | `style.css` | Primary | Scanned ✅ |
 | `app.css` | Secondary | Scanned if exists ✅ |
-| `pages/{pageName}/{pageName}.css` | Tertiary | Future phase |
 
-#### 8.2 — Detection Categories
 
-**Category A — Basic Component Variants**
+#### 8.3 — Detection Categories
 
-Pattern: `.wm-app` + **basic component class** + **custom modifier class**
+**Category A — Selected Component Variants**
+
+Pattern: `.wm-app` + **selected component base selector** + **custom modifier class**
+
+**Detection algorithm:**
+```
+For each CSS rule:
+  1. Extract all class names from selector
+  2. For each class name:
+     - Check if it exists in COMPONENT_SELECTOR_MAP
+     - If YES and component is in SELECTED_COMPONENTS:
+       - Mark as Category A (component variant)
+       - Extract custom class as variant name
+     - If NO or component NOT selected:
+       - Skip or mark as Category B
+```
+
+**Examples (where SELECTED_COMPONENTS includes button, label, icon, container):**
 
 ```css
-/* ✅ EXTRACT — .app-button is basic, .dark-btn is custom modifier */
+/* ✅ EXTRACT — .app-button is selected, .dark-btn is custom modifier */
 .wm-app .dark-btn.app-button { 
   background-color: #222; 
   color: #fff; 
 }
 
-/* ✅ EXTRACT — .app-label is basic, .text-ellipsis is custom modifier */
+/* ✅ EXTRACT — .app-label is selected, .text-ellipsis is custom modifier */
 .wm-app .text-ellipsis.app-label { 
   overflow: hidden; 
   text-overflow: ellipsis; 
 }
 
-/* ❌ SKIP — .app-input is NOT a basic component */
+/* ✅ EXTRACT — .btn is base selector for button (selected) */
+.wm-app .outline-btn.btn {
+  border: 2px solid #2294ef;
+}
+
+/* ❌ SKIP — .app-input is NOT in selected components */
 .wm-app .custom-input.app-input { 
   border: 1px solid #ccc; 
+}
+
+/* ❌ SKIP — .app-datatable is NOT in selected components */
+.wm-app .striped.app-datatable {
+  background: #f5f5f5;
 }
 ```
 
 **Category B — Custom Utility Classes**
 
-Pattern: `.wm-app` + **no component class**
+Pattern: `.wm-app` + **no selected component class**
 
 ```css
-/* ✅ EXTRACT — no component class found */
+/* ✅ EXTRACT — no selected component class found */
 .wm-app .card-wrapper { 
   background: linear-gradient(...); 
   border-radius: 16px; 
 }
 ```
 
-#### 8.3 — Extraction Algorithm
+#### 8.4 — Extraction Algorithm (Selected Components Only)
+
+**For each source file, parse all CSS rule blocks:**
 
 | Step | Action |
 |---|---|
 | 1 | Skip `:root {}`, `@font-face`, `@keyframes` blocks |
-| 2 | Skip non-basic components (input, container, data, etc.) |
-| 3 | Parse class tokens from selector |
-| 4 | Match against `COMPONENT_SELECTOR_MAP` |
-| 5 | If basic component + custom class → **Category A** |
-| 6 | If no component class → **Category B** |
-| 7 | Update `var()` references (legacy → foundation names) |
-| 8 | Deduplicate across source files |
+| 2 | Parse all class tokens from selector |
+| 3 | Match each class against `COMPONENT_SELECTOR_MAP` |
+| 4 | Check if component is in `SELECTED_COMPONENTS` list |
+| 5 | If YES + custom class → **Category A** (component variant) |
+| 6 | If NO → **SKIP** (component not selected) |
+| 7 | If no component class found → **Category B** (utility class) |
+| 8 | Update `var()` references (legacy → foundation names) |
+| 9 | Deduplicate across source files |
+| 10 | Collect: component, variant name, source file, rule block |
 
-#### 8.4 — Output A: Component Variant JSON
+#### 8.4 — MANDATORY: Output A: Component Variant JSON
+
+**✅ REQUIRED: For EVERY component variant found, create or update JSON file**
 
 **File path:** `src/main/webapp/design-tokens/overrides/components/<component>/<component>.json`
 
+**DO NOT SKIP THIS STEP** — Component variant definitions will not be available without JSON files.
+
 **IMPORTANT: One JSON file per component, not per variant**
+
+**Creation Instructions (STEP-BY-STEP):**
+
+1. **For each unique component found** (button, label, icon, anchor, message, picture):
+
+2. **Create folder (if missing):**
+   ```bash
+   mkdir -p "src/main/webapp/design-tokens/overrides/components/<component>/"
+   ```
+
+3. **Create/Open file:** `src/main/webapp/design-tokens/overrides/components/<component>/<component>.json`
+
+4. **If file DOES NOT exist** → Create with this structure:
+   ```json
+   {
+     "<component>": {
+       "appearances": {
+         "<variant_name>": {
+           "mapping": { /* variant properties */ }
+         }
+       },
+       "meta": {
+         "appearances": {
+           "<variant_name>": { "source": "user" }
+         }
+       }
+     }
+   }
+   ```
+
+5. **If file ALREADY exists** → Add variant as sibling:
+   ```json
+   {
+     "<component>": {
+       "appearances": {
+         "<existing_variant>": { /* ... */ },
+         "<new_variant>": { /* NEW variant here */ }
+       },
+       "meta": {
+         "appearances": {
+           "<existing_variant>": { "source": "user" },
+           "<new_variant>": { "source": "user" }
+         }
+       }
+     }
+   }
+   ```
+
+6. **For each variant, populate mapping:**
+   - Extract CSS properties from extracted rule
+   - Map to foundation tokens
+   - Include state definitions (hover, focus, active, disabled)
+   - See STEP 8.6 conversion tables
+
+7. **Verify created/updated:**
+   - ✅ File exists at correct path
+   - ✅ Valid JSON (no syntax errors)
+   - ✅ Component key matches filename
+   - ✅ All variants appear in "appearances" object
+   - ✅ All variants appear in "meta.appearances" object
+
+**Post-Creation Verification:**
+- ✅ 6 JSON files created (button, label, icon, anchor, message, picture)
+- ✅ 89 total variant definitions across 6 files
+- ✅ No duplicate variant names in same file
+- ✅ All files valid JSON format
 - If `button.json` exists and you find another button variant → **ADD to existing file**
 - Do NOT create `button-v2.json` or `button_dark.json`
 - Add new variants as sibling nodes under the `"appearances"` object
@@ -722,11 +1345,79 @@ Convert to JSON mapping:
 }
 ```
 
-#### 8.5 — Output B: CSS Rules to app.override.css
+#### 8.5 — MANDATORY: Output B: CSS Rules to app-override.css
 
-**Append to:** `src/main/webapp/design-tokens/app.override.css`
+**✅ REQUIRED: For EVERY component variant found, append CSS rules to app-override.css**
+
+**Append to:** `src/main/webapp/design-tokens/app-override.css`
+
+**DO NOT SKIP THIS STEP** — Variant CSS variables will not be available without these rules.
 
 **Purpose:** Convert the variant mapping into CSS custom properties (CSS variables) that components can consume.
+
+**Append Instructions (STEP-BY-STEP):**
+
+1. **Add separator comment:**
+   ```css
+   /* ============================================================
+    * Component Variants (migrated from legacy theme / app CSS)
+    * ============================================================ */
+   ```
+
+2. **For EACH component, add section header:**
+   ```css
+   /* --- Button variants --- */
+   /* --- Label variants --- */
+   /* --- Icon variants --- */
+   /* ... etc ... */
+   ```
+
+3. **For EACH variant, add base rule with all properties:**
+   ```css
+   .wm-app .dark-btn.app-button {
+     --wm-button-background: var(--wm-color-black);
+     --wm-button-color: var(--wm-color-background);
+     --wm-button-font-size: var(--wm-label-large-font-size);
+     --wm-button-font-family: var(--wm-label-large-font-family);
+     --wm-button-font-weight: var(--wm-label-large-font-weight);
+     /* ... all mapping properties ... */
+   }
+   ```
+
+4. **For EACH state (if defined), add state rules:**
+   ```css
+   .wm-app .dark-btn.app-button:hover,
+   .wm-app .dark-btn.app-button:hover::before,
+   .wm-app .dark-btn.app-button.hover::before {
+     --wm-button-state-layer-opacity: var(--wm-opacity-hover);
+   }
+
+   .wm-app .dark-btn.app-button:focus,
+   .wm-app .dark-btn.app-button:focus::before,
+   .wm-app .dark-btn.app-button.focus::before {
+     --wm-button-state-layer-opacity: var(--wm-opacity-focus);
+   }
+
+   .wm-app .dark-btn.app-button:active { /* ... */ }
+   .wm-app .dark-btn.app-button[disabled] { /* ... */ }
+   ```
+
+5. **Append order (IMPORTANT):**
+   - All component rules must come AFTER global token rules
+   - Group by component type
+   - Group variants within component
+
+6. **Verify appended:**
+   - ✅ File size increased (CSS added)
+   - ✅ Line count increased (by ~4+ lines per variant × 89 = ~356+ lines)
+   - ✅ No syntax errors in CSS
+   - ✅ All variants have base rules + state rules
+
+**Post-Append Verification:**
+- ✅ All 89 component variants have CSS rules in app-override.css
+- ✅ All CSS variables follow --wm-<component>-<property> pattern
+- ✅ All states (:hover, :focus, :active, [disabled]) present
+- ✅ File is valid CSS (no syntax errors)
 
 **Relationship to JSON:**
 - JSON `mapping` → CSS custom properties
@@ -1047,6 +1738,264 @@ NOTE: Source CSS files remain intact with original content preserved.
 
   /* Typography Overrides */
   --wm-font-family-brand: 'Roboto', sans-serif;
+}
+```
+
+---
+
+## Quick Reference: Custom Icon Font Extraction
+
+**When you find custom icon fonts in the theme, follow this process:**
+
+### 1. Locate Icon Font Files
+
+**Search for these files in theme folder:**
+```
+<THEME_DIR>/icomoon.eot
+<THEME_DIR>/icomoon.ttf
+<THEME_DIR>/icomoon.woff
+<THEME_DIR>/icomoon.svg
+
+OR
+
+<THEME_DIR>/icon-fonts/icomoon.eot
+<THEME_DIR>/icon-fonts/icomoon.ttf
+<THEME_DIR>/icon-fonts/icomoon.woff
+<THEME_DIR>/icon-fonts/icomoon.svg
+```
+
+### 2. Copy Files to Project
+
+```bash
+mkdir -p "src/main/webapp/resources/custom-icon/"
+cp <THEME_DIR>/icomoon.* src/main/webapp/resources/custom-icon/
+```
+
+### 3. Extract @font-face from style.css
+
+**Original:**
+```css
+@font-face {
+  font-family: 'icomoon';
+  src: url('icon-fonts/icomoon.eot?mdouv4');
+  src: url('icon-fonts/icomoon.ttf?mdouv4') format('truetype'),
+       url('icon-fonts/icomoon.woff?mdouv4') format('woff');
+}
+```
+
+**Updated for app-override.css:**
+```css
+@font-face {
+  font-family: 'icomoon';
+  src: url('/resources/custom-icon/icomoon.eot');
+  src: url('/resources/custom-icon/icomoon.ttf') format('truetype'),
+       url('/resources/custom-icon/icomoon.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+```
+
+### 4. Extract Icon Selectors & Classes
+
+**From style.css, find and extract:**
+
+**Base selector:**
+```css
+.wm-app [class^="pr-"],
+.wm-app [class*=" pr-"] {
+  font-family: 'icomoon' !important;
+  speak: never;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+```
+
+**Icon definitions:**
+```css
+.wm-app .pr-token:before { content: "\e95a"; }
+.wm-app .pr-arrow-dl:before { content: "\e94d"; }
+.wm-app .pr-pages:before { content: "\e94b"; }
+/* ... all pr-* icons ... */
+```
+
+### 5. Append to app-override.css
+
+```css
+/* ============================================================
+ * Custom Icon Fonts (migrated from legacy theme)
+ * ============================================================ */
+
+@font-face {
+  font-family: 'icomoon';
+  src: url('/resources/custom-icon/icomoon.eot');
+  src: url('/resources/custom-icon/icomoon.eot#iefix') format('embedded-opentype'),
+       url('/resources/custom-icon/icomoon.ttf') format('truetype'),
+       url('/resources/custom-icon/icomoon.woff') format('woff'),
+       url('/resources/custom-icon/icomoon.svg#icomoon') format('svg');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+.wm-app [class^="pr-"],
+.wm-app [class*=" pr-"] {
+  font-family: 'icomoon' !important;
+  speak: never;
+  /* ... all shared properties ... */
+}
+
+.wm-app .pr-token:before { content: "\e95a"; }
+.wm-app .pr-arrow-dl:before { content: "\e94d"; }
+/* ... all icon classes ... */
+```
+
+### 6. Verify & Report
+
+| Step | Check |
+|---|---|
+| **Files copied** | 4 files in `src/main/webapp/resources/custom-icon/` |
+| **@font-face** | Updated URLs to `/resources/custom-icon/` |
+| **Base selector** | `.wm-app [class^="pr-"]` with all shared properties |
+| **Icon definitions** | All `.pr-*:before` rules with content values |
+| **Special cases** | Preserve custom font-size if present (e.g., `pr-prefab-v`) |
+
+---
+
+## Quick Reference: Global Token Extraction
+
+**When you find custom global colors in style.css, follow this process:**
+
+### 1. Identify Color Values
+
+**From style.css:**
+```css
+:root {
+  --primary-color: #FF7250;
+  --secondary-color: #656DF9;
+  --error-color: #F44336;
+  --bg-color: #FFFFFF;
+  --text-color: #000000;
+}
+```
+
+### 2. Create CSS Variables (app-override.css)
+
+```css
+:root {
+  /* Color Overrides */
+  --wm-color-primary: #FF7250;
+  --wm-color-secondary: #656DF9;
+  --wm-color-error: #F44336;
+  --wm-color-surface: #FFFFFF;
+  --wm-color-on-surface: #000000;
+}
+```
+
+### 3. Create Global Color Token JSON
+
+**File path:** `src/main/webapp/design-tokens/overrides/global/color/color.light.json`
+
+**Extracted values:**
+```json
+{
+  "color": {
+    "primary": {
+      "@": {
+        "value": "#FF7250",
+        "attributes": { "subtype": "color" }
+      }
+    },
+    "secondary": {
+      "@": {
+        "value": "#656DF9",
+        "attributes": { "subtype": "color" }
+      }
+    },
+    "error": {
+      "@": {
+        "value": "#F44336",
+        "attributes": { "subtype": "color" }
+      }
+    },
+    "surface": {
+      "@": {
+        "value": "#FFFFFF",
+        "attributes": { "subtype": "color" }
+      }
+    },
+    "on-surface": {
+      "@": {
+        "value": "#000000",
+        "attributes": { "subtype": "color" }
+      }
+    }
+  }
+}
+```
+
+### 4. Color Naming Mapping (CSS Variable → Foundation Token)
+
+| CSS Variable | Foundation Path | JSON Value |
+|---|---|---|
+| `--primary-color` | `color.primary.@.value` | `#FF7250` |
+| `--secondary-color` | `color.secondary.@.value` | `#656DF9` |
+| `--error-color` | `color.error.@.value` | `#F44336` |
+| `--success-color` | `color.success.@.value` | `#4CAF50` |
+| `--warning-color` | `color.warning.@.value` | `#FF9800` |
+| `--info-color` | `color.info.@.value` | `#2196F3` |
+| `--bg-color` | `color.surface.@.value` | `#FFFFFF` |
+| `--text-color` | `color.on-surface.@.value` | `#000000` |
+| `--border-color` | `color.outline.@.value` | `#CCCCCC` |
+
+### 5. Add Container & Fixed Variants (Optional)
+
+If custom colors need light/dark variants, add them:
+
+```json
+{
+  "color": {
+    "primary": {
+      "@": {
+        "value": "#FF7250",
+        "attributes": { "subtype": "color" }
+      },
+      "container": {
+        "@": {
+          "value": "#ffe3dc",
+          "attributes": { "subtype": "color" }
+        }
+      },
+      "fixed": {
+        "@": {
+          "value": "#ffe8e2",
+          "attributes": { "subtype": "color" }
+        }
+      }
+    }
+  }
+}
+```
+
+### 6. Dark Mode (color.dark.json)
+
+If dark theme colors differ, create `color.dark.json`:
+
+```json
+{
+  "color": {
+    "primary": {
+      "@": {
+        "value": "#d0bcfe",
+        "attributes": { "subtype": "color" }
+      }
+    }
+  }
 }
 ```
 
