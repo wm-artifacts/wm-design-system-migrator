@@ -146,32 +146,31 @@ If `RULES_DIR` does not exist or no `Rule.md` files are found, skip this step an
 
 #### Execution
 
-Each `Rule.md` file carries its Python implementation in a `## Script` section. Read every Rule.md
-that was discovered in **Load conversion rules** (all are already in memory), then assemble and run
-one optimised temp script from those blocks. Do not hardcode the script.
+Each `Rule.md` file carries its Python implementation in a `## Script` section. The temp script that
+runs the conversion is **assembled programmatically from the raw `Rule.md` files** — never by hand.
 
-**1 · Read the `## Script` blocks from each Rule.md**
+> ⚠️ **Do not hand-transcribe the rule code blocks.** Several rule regexes contain the attribute
+> pattern `"[^"]*"|'[^']*'`. When that is re-typed by hand, the two `*` quantifiers can be read as a
+> Markdown `*…*` emphasis span and silently dropped, turning it into the invalid `"[^"]"|'[^']'`. That
+> produces `re.PatternError: missing ), unterminated subpattern` at runtime. The builder below sidesteps
+> this entirely by reading each `Rule.md` verbatim from disk and slicing out the fenced blocks — the
+> regexes are never re-typed.
 
-For every Rule.md already loaded:
-- A single Rule.md may contain **multiple** `## Script` headings (e.g. `data/Rule.md` has 7 — form, liveform, livetable, table, list, card, livefilter). Process **every** one, not just the first.
-- For each `## Script` heading, extract the fenced Python code block (```` ```python … ``` ````) that immediately follows it. Equivalently: extract **every** ```` ```python ```` block in the file.
-- Read `# Execution order: N` from the first comment line of each block (default `99` if absent).
-- Collect one `(order, code_block)` pair per block.
+**1 · Write the builder `<PROJECT_DIR>/wm_comp_conv_build.py`**
 
-Sort all pairs by `order` ascending.
+This is the *only* Python you author directly. It reads every `<category>/Rule.md` under `RULES_DIR`,
+extracts each ```` ```python ```` block (with its `# Execution order: N`, default `99`), sorts by order,
+discovers the `apply_*_rules` function names, and writes the runnable `wm_comp_conv_tmp.py`:
 
-**2 · Collect function names**
-
-Scan the sorted blocks for lines matching `def (apply_\w+_rules)\(text\):`.
-Preserve the sort order to build `RULE_FUNCS_LIST`.
-
-**3 · Assemble and write `<PROJECT_DIR>/wm_comp_conv_tmp.py`**
-
-Write the file in three parts:
-
-*Part 1 — shared header (verbatim):*
 ```python
 #!/usr/bin/env python3
+import re, sys
+from pathlib import Path
+
+RULES_DIR = Path(sys.argv[1])      # e.g. wm-component-conversion/assets/rules/web
+OUT       = Path(sys.argv[2])      # <PROJECT_DIR>/wm_comp_conv_tmp.py
+
+HEADER = r'''#!/usr/bin/env python3
 import re, sys, json
 from pathlib import Path
 
@@ -184,7 +183,7 @@ if '--pages' in sys.argv:
         PAGE_FILTER = [p.strip() for p in sys.argv[idx + 1].split(',')]
 
 def parse_attrs(s):
-    return dict(re.findall(r'([\w-]+)="([^"]*)"', s))
+    return dict(re.findall(r'([\w-]+)="([^"]{0,})"', s))
 
 def build_attrs(d):
     return ' '.join(f'{k}="{v}"' for k, v in d.items())
@@ -195,16 +194,13 @@ def merge_class(existing, *new_cls):
         if c and c not in parts:
             parts.append(c)
     return ' '.join(parts)
-```
+'''
 
-*Part 2 — append each sorted code block verbatim.*
-
-*Part 3 — main loop (substitute `<RULE_FUNCS_LIST>` with the comma-separated names from step 2):*
-```python
-RULE_FUNCS = [<RULE_FUNCS_LIST>]
+MAIN = r'''
+RULE_FUNCS = [__RULE_FUNCS_LIST__]
 
 pages_dir  = Path(PROJECT_DIR) / 'src/main/webapp/pages'
-html_files = sorted(pages_dir.glob('**/*.html'))
+html_files = sorted(pages_dir.rglob('*.html'))
 if PAGE_FILTER:
     html_files = [f for f in html_files if f.parent.name in PAGE_FILTER]
 
@@ -225,18 +221,53 @@ for html_path in html_files:
         html_path.write_text(text, encoding='utf-8')
 
 print(json.dumps({'summary': summary, 'totals': all_counts, 'dry_run': DRY_RUN}))
+'''
+
+# Slice every ```python block out of each <category>/Rule.md (raw read — no re-typing).
+fence = chr(96) * 3                                  # ``` without writing it literally
+blocks = []                                          # (order, code)
+for rule_md in sorted(RULES_DIR.glob('*/Rule.md')):
+    raw = rule_md.read_text(encoding='utf-8')
+    for seg in raw.split(fence + 'python')[1:]:
+        code = seg.split(fence, 1)[0]
+        if code.startswith('\n'):
+            code = code[1:]
+        m = re.search(r'# Execution order:\s*([0-9]+)', code)
+        order = int(m.group(1)) if m else 99
+        blocks.append((order, code))
+
+blocks.sort(key=lambda b: b[0])
+body = '\n\n'.join(code for _, code in blocks)
+
+# apply_*_rules names in execution order, de-duplicated.
+seen, funcs = set(), []
+for name in re.findall(r'def (apply_\w+_rules)\(text\)', body):
+    if name not in seen:
+        seen.add(name)
+        funcs.append(name)
+
+script = HEADER + '\n' + body + '\n' + MAIN.replace('__RULE_FUNCS_LIST__', ', '.join(funcs))
+OUT.write_text(script, encoding='utf-8')
+print(f'Wrote {OUT} ({len(blocks)} blocks): {", ".join(funcs)}')
 ```
 
-**4 · Run and clean up**
+Notes:
+- `RULES_DIR.glob('*/Rule.md')` matches exactly one `Rule.md` per immediate category subdirectory — new categories are picked up automatically.
+- A single `Rule.md` with multiple `## Script` blocks contributes all of them; ordering is driven solely by `# Execution order: N`.
+
+**2 · Build, run, and clean up**
 
 ```bash
+python3 "<PROJECT_DIR>/wm_comp_conv_build.py" "<RULES_DIR>" "<PROJECT_DIR>/wm_comp_conv_tmp.py"
 python3 "<PROJECT_DIR>/wm_comp_conv_tmp.py" "<PROJECT_DIR>" [--dry-run] [--pages "Page1,Page2"]
 ```
+
+`<RULES_DIR>` is the project-type rules root resolved in **Load conversion rules** (`.../assets/rules/web` or `.../assets/rules/mobile`).
 
 Parse the JSON output and store results in `COMP_COUNTS` for STEP 4.
 
 ```bash
-rm -f "<PROJECT_DIR>/wm_comp_conv_tmp.py"
+rm -f "<PROJECT_DIR>/wm_comp_conv_tmp.py" "<PROJECT_DIR>/wm_comp_conv_build.py"
 ```
 
 ---
