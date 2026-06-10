@@ -341,14 +341,44 @@ def get_alignment(attrs):
     h = h_map.get(attrs.get('horizontalalign', 'left'), 'left')
     return f'middle-{h}'
 
+# ── grid pre-scan: count direct-child gridrows per layoutgrid ────────────────
+
+_LG_SCAN = re.compile(
+    r'(<wm-layoutgrid\b[^>]*?>|</wm-layoutgrid>'
+    r'|<wm-gridrow\b[^>]*?>)',
+    re.DOTALL
+)
+
+def _count_gridrows_per_layoutgrid(text):
+    """Return list of direct-child wm-gridrow counts, indexed by layoutgrid opening-tag order."""
+    stack   = []   # each entry: {'idx': int, 'count': int}
+    results = {}   # opening-tag index → gridrow count
+    lg_idx  = 0
+
+    for m in _LG_SCAN.finditer(text):
+        tag = m.group(0)
+        if tag.startswith('<wm-layoutgrid') and not tag.startswith('</'):
+            stack.append({'idx': lg_idx, 'count': 0})
+            lg_idx += 1
+        elif tag == '</wm-layoutgrid>':
+            if stack:
+                entry = stack.pop()
+                results[entry['idx']] = entry['count']
+        elif tag.startswith('<wm-gridrow'):
+            if stack:
+                stack[-1]['count'] += 1   # only the innermost layoutgrid gets the credit
+
+    return [results.get(i, 1) for i in range(lg_idx)]
+
 # ── per-element converters ───────────────────────────────────────────────────
 
-def conv_layoutgrid(attr_str):
+def conv_layoutgrid(attr_str, direction='row'):
+    """direction is computed by the caller from the gridrow pre-scan."""
     s = parse_attrs(attr_str)
     d = {}
     if s.get('name'):
         d['name'] = s['name']
-    d['direction']  = 'row'
+    d['direction']  = direction
     d['wrap']       = 'true'
     d['width']      = 'fill'
     d['class']      = merge_class(s.get('class', ''), 'app-container-default')
@@ -487,9 +517,18 @@ def convert_linearlayout_html(text):
 def convert_grid_html(text):
     counts = {'layoutgrid': 0, 'gridrow': 0, 'gridcolumn': 0}
 
+    # Pre-scan: determine direction for each layoutgrid before replacing tags.
+    # direction = "column" when the layoutgrid has >1 direct-child gridrows
+    # (rows must stack vertically); "row" when there is only 1.
+    gridrow_counts = _count_gridrows_per_layoutgrid(text)
+    lg_idx = [0]
+
     def _sub_layoutgrid(m):
+        i = lg_idx[0]; lg_idx[0] += 1
         counts['layoutgrid'] += 1
-        return f'<wm-container {conv_layoutgrid(m.group(1))}>'
+        nr        = gridrow_counts[i] if i < len(gridrow_counts) else 1
+        direction = 'column' if nr > 1 else 'row'
+        return f'<wm-container {conv_layoutgrid(m.group(1), direction)}>'
 
     def _sub_gridrow(m):
         counts['gridrow'] += 1
@@ -749,17 +788,38 @@ If any page had zero changes after filtering, list it under *"Pages skipped (no 
 
 ## Conversion rules reference
 
-### `wm-layoutgrid` → outer flex row container
+### `wm-layoutgrid` → flex container (direction determined by gridrow count)
+
+**Direction rule (pre-scanned before any tag is replaced):**
+
+| Direct-child `wm-gridrow` count | `direction` |
+|---|---|
+| 1 | `"row"` — single row, columns sit side by side |
+| > 1 | `"column"` — multiple rows must stack vertically |
 
 ```html
-<!-- BEFORE -->
+<!-- BEFORE: single gridrow -->
 <wm-layoutgrid name="layoutgrid1" class="custom">
-  ...
+  <wm-gridrow>...</wm-gridrow>
 </wm-layoutgrid>
 
-<!-- AFTER -->
+<!-- AFTER: direction="row" (1 gridrow) -->
 <wm-container name="layoutgrid1" direction="row" wrap="true" width="fill"
     class="app-container-default custom" variant="default" gap="0" columngap="0">
+  ...
+</wm-container>
+```
+
+```html
+<!-- BEFORE: multiple gridrows -->
+<wm-layoutgrid name="layoutgrid1">
+  <wm-gridrow>...</wm-gridrow>
+  <wm-gridrow>...</wm-gridrow>
+</wm-layoutgrid>
+
+<!-- AFTER: direction="column" (> 1 gridrow) -->
+<wm-container name="layoutgrid1" direction="column" wrap="true" width="fill"
+    class="app-container-default" variant="default" gap="0" columngap="0">
   ...
 </wm-container>
 ```
@@ -768,13 +828,14 @@ Attribute rules:
 - `name` → kept as-is (preserves JS/CSS references)
 - `class` → merged; `app-container-default` appended if not already present
 - All layoutgrid-specific attributes → discarded
-- Fixed additions: `direction="row"` `wrap="true"` `width="fill"` `variant="default"` `gap="0"` `columngap="0"`
+- `direction` → `"column"` if direct-child gridrow count > 1, else `"row"` (pre-scanned)
+- Fixed additions: `wrap="true"` `width="fill"` `variant="default"` `gap="0"` `columngap="0"`
 
 ---
 
 ### `wm-gridrow` → flex row container
 
-Same rules as `wm-layoutgrid` above.
+Always `direction="row"` `wrap="true"` regardless of contents.
 
 ---
 
@@ -948,7 +1009,7 @@ converted columns to full width on screens ≤ 767 px (mobile portrait):
 }
 ```
 
-**Example walkthrough:**
+**Example walkthrough — single gridrow (direction="row"):**
 
 Input:
 ```html
@@ -962,21 +1023,57 @@ Input:
 </wm-layoutgrid>
 ```
 
-Output:
+Output (1 gridrow → `direction="row"` on outer; collapse removes the redundant row wrapper):
 ```html
-<wm-container name="layoutgrid1" direction="row" wrap="true" width="fill"
+<wm-container name="gridrow1" direction="row" wrap="true" width="fill"
+    class="app-container-default" variant="default" gap="0" columngap="0">
+    <wm-container name="gridcolumn1" direction="row" wrap="true" width="50%"
+        class="app-container-default" variant="default">
+        <wm-button caption="Button" name="button1"></wm-button>
+    </wm-container>
+    <wm-container name="gridcolumn2" direction="row" wrap="true" width="50%"
+        class="app-container-default" variant="default"></wm-container>
+</wm-container>
+```
+
+> The outer layoutgrid and the single gridrow both had `direction="row"` and `width="fill"`, so the collapse pass merged them into one container (gridrow1 name is preserved).
+
+---
+
+**Example walkthrough — multiple gridrows (direction="column"):**
+
+Input:
+```html
+<wm-layoutgrid name="layoutgrid1">
+    <wm-gridrow name="gridrow1">
+        <wm-gridcolumn columnwidth="6" name="gridcolumn1"></wm-gridcolumn>
+        <wm-gridcolumn columnwidth="6" name="gridcolumn2"></wm-gridcolumn>
+    </wm-gridrow>
+    <wm-gridrow name="gridrow2">
+        <wm-gridcolumn columnwidth="12" name="gridcolumn3"></wm-gridcolumn>
+    </wm-gridrow>
+</wm-layoutgrid>
+```
+
+Output (2 gridrows → `direction="column"` on outer; rows stack vertically):
+```html
+<wm-container name="layoutgrid1" direction="column" wrap="true" width="fill"
     class="app-container-default" variant="default" gap="0" columngap="0">
     <wm-container name="gridrow1" direction="row" wrap="true" width="fill"
         class="app-container-default" variant="default" gap="0" columngap="0">
         <wm-container name="gridcolumn1" direction="row" wrap="true" width="50%"
-            class="app-container-default" variant="default">
-            <wm-button caption="Button" name="button1"></wm-button>
-        </wm-container>
+            class="app-container-default" variant="default"></wm-container>
         <wm-container name="gridcolumn2" direction="row" wrap="true" width="50%"
+            class="app-container-default" variant="default"></wm-container>
+    </wm-container>
+    <wm-container name="gridrow2" direction="row" wrap="true" width="fill"
+        class="app-container-default" variant="default" gap="0" columngap="0">
+        <wm-container name="gridcolumn3" direction="row" wrap="true" width="fill"
             class="app-container-default" variant="default"></wm-container>
     </wm-container>
 </wm-container>
 ```
 
-On desktop: two equal-width flex columns (with row layout inside) side by side.
-On mobile (with `--responsive`): each column stacks to 100% width vertically.
+> The outer container uses `direction="column"` so the two rows stack. Each gridrow uses `direction="row"` so its columns sit side by side.
+
+On mobile (with `--responsive`): each gridcolumn stacks to 100% width vertically.

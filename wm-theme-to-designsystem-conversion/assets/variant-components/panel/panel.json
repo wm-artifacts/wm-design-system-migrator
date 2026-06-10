@@ -1,0 +1,136 @@
+{
+  "panel" : {
+    "appearances" : {
+      "custom-panel" : {
+        "mapping" : {
+          "background" : {
+            "@" : {
+              "value" : "{color.surface.@.value}"
+            }
+          },
+          "border" : {
+            "radius" : {
+              "value" : "{radius.xs.value}"
+            }
+          },
+          "shadow" : {
+            "value" : "{elevation.shadow.1.value}"
+          },
+          "heading" : {
+            "gap" : {
+              "value" : "{space.2.value}"
+            },
+            "padding" : {
+              "block" : {
+                "value" : "{space.4.value}"
+              },
+              "inline" : {
+                "value" : "{space.4.value}"
+              }
+            },
+            "font-family" : {
+              "value" : "{h4.font-family.value}"
+            },
+            "font-size" : {
+              "value" : "{h4.font-size.value}"
+            },
+            "font-weight" : {
+              "value" : "{h4.font-weight.value}"
+            },
+            "line-height" : {
+              "value" : "{h4.line-height.value}"
+            },
+            "letter-spacing" : {
+              "value" : "{h4.letter-spacing.value}"
+            },
+            "color" : {
+              "value" : "{color.on-surface.@.value}"
+            },
+            "background" : {
+              "value" : "{color.surface.@.value}"
+            }
+          },
+          "description" : {
+            "font-family" : {
+              "value" : "{body.medium.font-family.value}"
+            },
+            "font-size" : {
+              "value" : "{body.medium.font-size.value}"
+            },
+            "font-weight" : {
+              "value" : "{body.medium.font-weight.value}"
+            },
+            "line-height" : {
+              "value" : "{body.medium.line-height.value}"
+            },
+            "letter-spacing" : {
+              "value" : "{body.medium.letter-spacing.value}"
+            },
+            "color" : {
+              "value" : "{color.on-surface.variant.@.value}"
+            }
+          },
+          "actions" : {
+            "gap" : {
+              "value" : "{space.2.value}"
+            }
+          },
+          "content" : {
+            "padding" : {
+              "value" : "{space.4.value}"
+            }
+          },
+          "help" : {
+            "message" : {
+              "header" : {
+                "background" : {
+                  "value" : "{color.surface.@.value}"
+                }
+              },
+              "border" : {
+                "@" : {
+                  "value" : "{color.outline.variant.value}"
+                },
+                "width" : {
+                  "value" : "{border.width.base.value}"
+                },
+                "style" : {
+                  "value" : "{border.style.base.value}"
+                }
+              },
+              "padding" : {
+                "value" : "{space.2.value}"
+              },
+              "background" : {
+                "value" : "#fffed0"
+              }
+            }
+          },
+          "footer" : {
+            "padding" : {
+              "value" : "{space.4.value}"
+            },
+            "border" : {
+              "color" : {
+                "value" : "{color.outline.variant.value}"
+              },
+              "width" : {
+                "value" : "{border.width.base.value}"
+              },
+              "style" : {
+                "value" : "{border.style.base.value}"
+              }
+            }
+          }
+        }
+      }
+    },
+    "meta" : {
+      "appearances" : {
+        "custom-panel" : {
+          "source" : "user"
+        }
+      }
+    }
+  }
+}

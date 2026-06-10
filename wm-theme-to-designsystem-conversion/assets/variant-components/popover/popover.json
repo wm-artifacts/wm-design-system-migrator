@@ -1,0 +1,103 @@
+{
+  "popover" : {
+    "appearances" : {
+      "custom-popover" : {
+        "mapping" : {
+          "z-index" : {
+            "value" : "1060"
+          },
+          "gap" : {
+            "value" : "~\"calc({space.1.value} * 2.5)\""
+          },
+          "margin" : {
+            "value" : "{space.1.value}"
+          },
+          "padding" : {
+            "value" : "{space.0.value}"
+          },
+          "background" : {
+            "value" : "{color.surface.container.@.value}"
+          },
+          "color" : {
+            "value" : "{color.on-surface.@.value}"
+          },
+          "shadow" : {
+            "value" : "{elevation.shadow.1.value}"
+          },
+          "radius" : {
+            "value" : "{radius.sm.value}"
+          },
+          "border" : {
+            "color" : {
+              "value" : "{color.transparent.value}"
+            },
+            "width" : {
+              "value" : "{border.width.0.value}"
+            },
+            "style" : {
+              "value" : "none"
+            }
+          },
+          "header" : {
+            "padding" : {
+              "value" : "{space.4.value}"
+            },
+            "color" : {
+              "value" : "{color.on-surface.@.value}"
+            },
+            "font-family" : {
+              "value" : "{h4.font-family.value}"
+            },
+            "font-weight" : {
+              "value" : "{h4.font-weight.value}"
+            },
+            "font-size" : {
+              "value" : "{h4.font-size.value}"
+            },
+            "line-height" : {
+              "value" : "{h4.line-height.value}"
+            },
+            "letter-spacing" : {
+              "value" : "{h4.letter-spacing.value}"
+            }
+          },
+          "body" : {
+            "padding" : {
+              "value" : "{space.4.value}"
+            },
+            "font-family" : {
+              "value" : "{body.medium.font-family.value}"
+            },
+            "font-size" : {
+              "value" : "{body.medium.font-size.value}"
+            },
+            "font-weight" : {
+              "value" : "{body.medium.font-weight.value}"
+            },
+            "line-height" : {
+              "value" : "{body.medium.line-height.value}"
+            },
+            "letter-spacing" : {
+              "value" : "{body.medium.letter-spacing.value}"
+            }
+          },
+          "arrow" : {
+            "background" : {
+              "value" : "{color.surface.container.@.value}"
+            },
+            "size" : {
+              "value" : "{space.3.value}"
+            }
+          }
+        }
+      }
+    },
+    "meta" : {
+      "appearances" : {
+        "custom-popover" : {
+          "source" : "user"
+        }
+      }
+    }
+  }
+}

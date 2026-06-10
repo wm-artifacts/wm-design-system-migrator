@@ -1,0 +1,44 @@
+{
+  "label" : {
+    "appearances" : {
+      "custom-label" : {
+        "mapping" : {
+          "color" : {
+            "value" : "inherit"
+          },
+          "margin" : {
+            "value" : "{space.0.value}"
+          },
+          "padding" : {
+            "value" : "{space.0.value}"
+          },
+          "font-size" : {
+            "value" : "{body.medium.font-size.value}"
+          },
+          "font-weight" : {
+            "value" : "{body.medium.font-weight.value}"
+          },
+          "line-height" : {
+            "value" : "{body.medium.line-height.value}"
+          },
+          "letter-spacing" : {
+            "value" : "{body.medium.letter-spacing.value}"
+          },
+          "font-family" : {
+            "value" : "{body.medium.font-family.value}"
+          },
+          "background-color" : {
+            "value" : "none"
+          }
+        }
+      }
+    },
+    "meta" : {
+      "appearances" : {
+        "custom-label" : {
+          "source" : "user"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "list" : {
+    "appearances" : {
+      "custom-list" : {
+        "mapping" : {
+          "background" : {
+            "value" : "{color.surface.@.value}"
+          },
+          "min-height" : {
+            "value" : "6rem"
+          },
+          "opacity" : {
+            "value" : "1"
+          },
+          "pointer-events" : {
+            "value" : "all"
+          },
+          "state" : {
+            "layer" : {
+              "color" : {
+                "value" : "{color.on-surface.@.value}"
+              },
+              "opacity" : {
+                "value" : "0"
+              }
+            }
+          },
+          "item" : {
+            "background" : {
+              "value" : "{color.white.@.value}"
+            },
+            "padding" : {
+              "value" : "{space.3.value} {space.4.value}"
+            },
+            "header" : {
+              "padding" : {
+                "value" : "{space.3.value} {space.4.value}"
+              },
+              "background" : {
+                "value" : "{color.surface.container.lowest.@.value}"
+              },
+              "color" : {
+                "value" : "{color.on-surface.@.value}"
+              }
+            }
+          },
+          "states" : {
+            "hover" : {
+              "state" : {
+                "layer" : {
+                  "opacity" : {
+                    "value" : "{opacity.hover.value}"
+                  }
+                }
+              }
+            },
+            "focus" : {
+              "state" : {
+                "layer" : {
+                  "opacity" : {
+                    "value" : "{opacity.hover.value}"
+                  }
+                }
+              }
+            },
+            "active" : {
+              "item" : {
+                "background" : {
+                  "value" : "{color.secondary.container.@.value}"
+                }
+              },
+              "state" : {
+                "layer" : {
+                  "opacity" : {
+                    "value" : "{opacity.active.value}"
+                  }
+                }
+              }
+            },
+            "disabled" : {
+              "opacity" : {
+                "value" : "0.38"
+              },
+              "pointer-events" : {
+                "value" : "none"
+              }
+            }
+          }
+        }
+      }
+    },
+    "meta" : {
+      "appearances" : {
+        "custom-list" : {
+          "source" : "user"
+        }
+      }
+    }
+  }
+}
