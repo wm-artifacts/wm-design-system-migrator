@@ -10,7 +10,7 @@ The `<wm-form>` component replaces its internal `<wm-layoutgrid>` hierarchy with
 
 ```
 NDS:
-<wm-form columns="2" ...>
+<wm-form ...>
   <wm-layoutgrid columns="2">
     <wm-gridrow>
       <wm-gridcolumn columnwidth="6">
@@ -74,18 +74,100 @@ Signature contract: `apply_form_rules(text) -> (text, counts_dict)`.
 # Components: wm-form, wm-form-action (within wm-form context)
 
 def apply_form_rules(text):
-    counts = {'wm_form_itemsperrow': 0}
+    counts = {'wm_form_itemsperrow': 0, 'wm_form_layoutgrid_converted': 0}
 
-    def patch_form(m):
-        attrs = parse_attrs(m.group(2))
-        cols = attrs.get('columns', '')
-        if cols and 'itemsperrow' not in attrs:
-            attrs['itemsperrow'] = f'xs-1 sm-{cols} md-{cols} lg-{cols}'
+    def matching_close_span(s, name, body_start, exclude_dash=False):
+        guard = r'(?!-)' if exclude_dash else ''
+        open_pat = re.compile(r'<' + re.escape(name) + r'\b' + guard +
+                              r'((?:[^>"\']|"[^"]*"|\'[^\']*\')*?)(/?)>', re.DOTALL)
+        close_pat = re.compile(r'</' + re.escape(name) + r'\s*>')
+        depth, pos = 1, body_start
+        while pos < len(s):
+            o = open_pat.search(s, pos)
+            c = close_pat.search(s, pos)
+            if not c:
+                return -1, -1
+            if o and o.start() < c.start():
+                if o.group(2) != '/':          # not self-closing -> deeper nesting
+                    depth += 1
+                pos = o.end()
+            else:
+                depth -= 1
+                if depth == 0:
+                    return c.start(), c.end()
+                pos = c.end()
+        return -1, -1
+
+    def strip_first_level_grid(inner):
+        token_re = re.compile(
+            r'<(/?)(wm-layoutgrid|wm-gridrow|wm-gridcolumn)\b'
+            r'((?:[^>"\']|"[^"]*"|\'[^\']*\')*?)(/?)>', re.DOTALL)
+        out, pos, nest = [], 0, 0
+        for t in token_re.finditer(inner):
+            out.append(inner[pos:t.start()])
+            pos = t.end()
+            is_close, name, self_close = t.group(1) == '/', t.group(2), t.group(4) == '/'
+            if name == 'wm-layoutgrid':
+                out.append(t.group(0))         # nested grid: keep verbatim, track depth
+                if is_close:
+                    nest -= 1
+                elif not self_close:
+                    nest += 1
+            elif nest > 0:                     # gridrow/gridcolumn inside a nested grid: keep
+                out.append(t.group(0))
+            # else: first-level gridrow/gridcolumn -> drop the wrapper tag
+        out.append(inner[pos:])
+        return ''.join(out)
+
+    lg_open_re = re.compile(r'<wm-layoutgrid\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*?)(/?)>', re.DOTALL)
+    form_open_re = re.compile(r'<wm-form(?!-)((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', re.DOTALL)
+
+    out, cursor = [], 0
+    for fm in form_open_re.finditer(text):
+        if fm.start() < cursor:
+            continue
+        out.append(text[cursor:fm.start()])
+        form_attrs = parse_attrs(fm.group(1))
+
+        fclose_start, fclose_end = matching_close_span(text, 'wm-form', fm.end(), exclude_dash=True)
+        body_end = fclose_start if fclose_start != -1 else len(text)
+        body = text[fm.end():body_end]
+
+        # Column count comes from the immediate-child <wm-layoutgrid>, not the <wm-form> tag.
+        cols, new_body = '', body
+        lg = lg_open_re.search(body)
+        if lg and lg.group(2) != '/':
+            lg_attrs = parse_attrs(lg.group(1))
+            cols = lg_attrs.get('columns', '')
+            lc_start, lc_end = matching_close_span(body, 'wm-layoutgrid', lg.end())
+            if lc_start != -1:
+                stripped = strip_first_level_grid(body[lg.end():lc_start])
+                # Convert outermost wm-layoutgrid -> wm-container, keeping its attributes intact.
+                cont = {'direction': 'row', 'alignment': 'top-left', 'wrap': 'true', 'width': 'fill'}
+                for k, v in lg_attrs.items():
+                    if k not in ('class', 'variant'):
+                        cont[k] = v
+                cont['class'] = merge_class(lg_attrs.get('class', ''), 'app-container-default')
+                cont['variant'] = lg_attrs.get('variant', 'default')
+                new_body = (body[:lg.start()] + f'<wm-container {build_attrs(cont)}>' +
+                            stripped + '</wm-container>' + body[lc_end:])
+                counts['wm_form_layoutgrid_converted'] += 1
+
+        if 'itemsperrow' not in form_attrs:
+            form_attrs['itemsperrow'] = (f'xs-{cols} sm-{cols} md-{cols} lg-{cols}'
+                                         if cols else 'xs-1 sm-1 md-1 lg-1')
             counts['wm_form_itemsperrow'] += 1
-        return f'<wm-form {build_attrs(attrs)}>'
 
-    text = re.sub(r'<(wm-form)(?!-)((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_form, text)
-    return text, counts
+        out.append(f'<wm-form {build_attrs(form_attrs)}>')
+        out.append(new_body)
+        if fclose_start != -1:
+            out.append(text[fclose_start:fclose_end])
+            cursor = fclose_end
+        else:
+            cursor = body_end
+
+    out.append(text[cursor:])
+    return ''.join(out), counts
 ```
 
 ---
@@ -159,121 +241,114 @@ Signature contract: `apply_liveform_rules(text) -> (text, counts_dict)`.
 # Components: wm-liveform (standalone, outside wm-livetable)
 
 def apply_liveform_rules(text):
-    counts = {'wm_liveform_itemsperrow': 0}
+    counts = {'wm_liveform_itemsperrow': 0, 'wm_liveform_layoutgrid_converted': 0}
 
-    def patch_liveform(m):
-        attrs = parse_attrs(m.group(1))
-        cols = attrs.get('columns', '')
-        if cols and 'itemsperrow' not in attrs:
-            attrs['itemsperrow'] = f'xs-1 sm-{cols} md-{cols} lg-{cols}'
+    def matching_close_span(s, name, body_start):
+        """(start, end) of the </name> that matches the open whose body starts at body_start.
+        Depth-aware (skips self-closing opens)."""
+        open_pat = re.compile(r'<' + re.escape(name) +
+                              r'\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*?)(/?)>', re.DOTALL)
+        close_pat = re.compile(r'</' + re.escape(name) + r'\s*>')
+        depth, pos = 1, body_start
+        while pos < len(s):
+            o = open_pat.search(s, pos)
+            c = close_pat.search(s, pos)
+            if not c:
+                return -1, -1
+            if o and o.start() < c.start():
+                if o.group(2) != '/':          # not self-closing -> deeper nesting
+                    depth += 1
+                pos = o.end()
+            else:
+                depth -= 1
+                if depth == 0:
+                    return c.start(), c.end()
+                pos = c.end()
+        return -1, -1
+
+    def strip_first_level_grid(inner):
+        """Drop only the first-level <wm-gridrow>/<wm-gridcolumn> wrappers, preserving their
+        children. Any nested <wm-layoutgrid> subtree is left untouched."""
+        token_re = re.compile(
+            r'<(/?)(wm-layoutgrid|wm-gridrow|wm-gridcolumn)\b'
+            r'((?:[^>"\']|"[^"]*"|\'[^\']*\')*?)(/?)>', re.DOTALL)
+        out, pos, nest = [], 0, 0
+        for t in token_re.finditer(inner):
+            out.append(inner[pos:t.start()])
+            pos = t.end()
+            is_close, name, self_close = t.group(1) == '/', t.group(2), t.group(4) == '/'
+            if name == 'wm-layoutgrid':
+                out.append(t.group(0))         # nested grid: keep verbatim, track depth
+                if is_close:
+                    nest -= 1
+                elif not self_close:
+                    nest += 1
+            elif nest > 0:                     # gridrow/gridcolumn inside a nested grid: keep
+                out.append(t.group(0))
+            # else: first-level gridrow/gridcolumn -> drop the wrapper tag
+        out.append(inner[pos:])
+        return ''.join(out)
+
+    lg_open_re = re.compile(r'<wm-layoutgrid\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*?)(/?)>', re.DOTALL)
+    lf_open_re = re.compile(r'<wm-liveform\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', re.DOTALL)
+
+    out, cursor = [], 0
+    for fm in lf_open_re.finditer(text):
+        if fm.start() < cursor:
+            continue
+        out.append(text[cursor:fm.start()])
+        lf_attrs = parse_attrs(fm.group(1))
+
+        # Inline liveforms (inside wm-livetable) are handled by Rule 04 — leave them untouched.
+        if lf_attrs.get('formlayout') == 'inline':
+            out.append(fm.group(0))
+            cursor = fm.end()
+            continue
+
+        lfc_start, lfc_end = matching_close_span(text, 'wm-liveform', fm.end())
+        body_end = lfc_start if lfc_start != -1 else len(text)
+        body = text[fm.end():body_end]
+
+        # Column count comes from the immediate-child <wm-layoutgrid>, not the <wm-liveform> tag.
+        cols, new_body = '', body
+        lg = lg_open_re.search(body)
+        if lg and lg.group(2) != '/':
+            lg_attrs = parse_attrs(lg.group(1))
+            cols = lg_attrs.get('columns', '')
+            lc_start, lc_end = matching_close_span(body, 'wm-layoutgrid', lg.end())
+            if lc_start != -1:
+                stripped = strip_first_level_grid(body[lg.end():lc_start])
+                # Convert outermost wm-layoutgrid -> wm-container, keeping its attributes intact.
+                cont = {'direction': 'row', 'alignment': 'top-left', 'wrap': 'true', 'width': 'fill'}
+                for k, v in lg_attrs.items():
+                    if k not in ('class', 'variant'):
+                        cont[k] = v
+                cont['class'] = merge_class(lg_attrs.get('class', ''), 'app-container-default')
+                cont['variant'] = lg_attrs.get('variant', 'default')
+                new_body = (body[:lg.start()] + f'<wm-container {build_attrs(cont)}>' +
+                            stripped + '</wm-container>' + body[lc_end:])
+                counts['wm_liveform_layoutgrid_converted'] += 1
+
+        if 'itemsperrow' not in lf_attrs:
+            lf_attrs['itemsperrow'] = (f'xs-{cols} sm-{cols} md-{cols} lg-{cols}'
+                                       if cols else 'xs-1 sm-1 md-1 lg-1')
             counts['wm_liveform_itemsperrow'] += 1
-        return f'<wm-liveform {build_attrs(attrs)}>'
 
-    text = re.sub(r'<wm-liveform\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_liveform, text)
-    return text, counts
+        out.append(f'<wm-liveform {build_attrs(lf_attrs)}>')
+        out.append(new_body)
+        if lfc_start != -1:
+            out.append(text[lfc_start:lfc_end])
+            cursor = lfc_end
+        else:
+            cursor = body_end
+
+    out.append(text[cursor:])
+    return ''.join(out), counts
 ```
 
----
 
-# Rule 04: Live Table (`<wm-livetable>`)
 
-## Overview
-
-`<wm-livetable>` is a composite container that wraps a `<wm-table>` and an inline `<wm-liveform>`. The outer `<wm-livetable>` tag itself is unchanged. The inner `<wm-table>` gets `variant="default"` (handled by Rule 05). The inner `<wm-liveform>` gets `itemsperrow="xs-2 sm-2 md-2 lg-2"` — a fixed two-column constraint for the inline form layout.
-
----
-
-## Hierarchy
-
-```
-NDS:
-<wm-livetable name="...">
-  <wm-table ... navigation="Classic"></wm-table>
-  <wm-liveform formlayout="inline" ...></wm-liveform>
-</wm-livetable>
-
-DS:
-<wm-livetable name="...">
-  <wm-table ... navigation="Classic"></wm-table>          ← variant="default" added (Rule 05)
-  <wm-liveform formlayout="inline" itemsperrow="xs-2 sm-2 md-2 lg-2" ...></wm-liveform>
-</wm-livetable>
-```
-
----
-
-## `<wm-livetable>` outer tag
-
-- **Action:** None — the `<wm-livetable>` tag is unchanged.
-
-## `<wm-table>` inside `<wm-livetable>`
-
-- **Action:** Add `variant="default"` — handled by Rule 05 (`apply_datatable_rules`).
-
-## `<wm-liveform>` inside `<wm-livetable>`
-
-- **NDS Pattern:** `<wm-liveform formlayout="inline" ...>` — no `itemsperrow`.
-- **DS Pattern:** `<wm-liveform formlayout="inline" itemsperrow="xs-2 sm-2 md-2 lg-2" ...>`
-
-### Action
-
-Add `itemsperrow="xs-2 sm-2 md-2 lg-2"` to any `<wm-liveform>` that has `formlayout="inline"` and does not already have `itemsperrow`.
-
----
-
-## Script
-
-Signature contract: `apply_livetable_rules(text) -> (text, counts_dict)`.
-
-```python
-# Execution order: 4
-# Components: wm-liveform (inline, inside wm-livetable — formlayout="inline")
-
-def apply_livetable_rules(text):
-    counts = {'wm_liveform_inline_itemsperrow': 0}
-
-    def find_parent_columns(text, pos):
-        """Walk tags before pos with a stack; check only the 2 immediate parents."""
-        preceding = text[:pos]
-        tag_re = re.compile(r'<(/?)([\w-]+)\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>')
-        stack = []                          # list of (tag_name, attrs_str)
-        for t in tag_re.finditer(preceding):
-            if t.group(1) == '/':           # closing tag
-                if stack and stack[-1][0] == t.group(2):
-                    stack.pop()
-            else:                           # opening tag
-                stack.append((t.group(2), t.group(3)))
-        # Check only the 2 immediate parents (top of stack)
-        for entry in reversed(stack[-2:]):
-            parent_attrs = parse_attrs(entry[1])
-            cols = parent_attrs.get('columns', '')
-            if cols:
-                return cols
-        return ''
-
-    def patch_livetable_block(m):
-        lt_attrs_str = m.group(1)
-        block_content = m.group(2)
-
-        # columns from the parent of wm-livetable; default N=2
-        cols = find_parent_columns(text, m.start()) or '2'
-
-        def patch_inner_liveform(lf_match):
-            attrs = parse_attrs(lf_match.group(1))
-            if attrs.get('formlayout') == 'inline' and 'itemsperrow' not in attrs:
-                attrs['itemsperrow'] = f'xs-1 sm-{cols} md-{cols} lg-{cols}'
-                counts['wm_liveform_inline_itemsperrow'] += 1
-            return f'<wm-liveform {build_attrs(attrs)}>'
-
-        block_content = re.sub(r'<wm-liveform\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_inner_liveform, block_content)
-        return f'<wm-livetable{lt_attrs_str}>{block_content}'
-
-    text = re.sub(r'<wm-livetable\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>(.*?)(?=</wm-livetable>)', patch_livetable_block, text, flags=re.DOTALL)
-    return text, counts
-```
-
----
-
-# Rule 05: Data Table (`<wm-table>`)
+# Rule 04: Data Table (`<wm-table>`)
 
 ## Overview
 
@@ -329,7 +404,7 @@ def apply_datatable_rules(text):
 
 ---
 
-# Rule 06: List (`<wm-list>`)
+# Rule 05: List (`<wm-list>`)
 
 ## Overview
 
@@ -438,7 +513,7 @@ def apply_list_rules(text):
 
 ---
 
-# Rule 07: Card (`<wm-list>` Card Variant)
+# Rule 06: Card (`<wm-list>` Card Variant)
 
 ## Overview
 
@@ -565,6 +640,10 @@ def apply_card_rules(text):
         attrs['class'] = merge_class(attrs.get('class', ''), default_cls)
         if 'picturesource' in attrs:
             attrs['backgroundimage'] = attrs.pop('picturesource')
+        for attr in list(attrs.keys()):
+            if attr == 'actions' or attr.startswith('item'):
+                attrs.pop(attr, None)
+        
         counts['wm_card_converted'] += 1
         return f'<wm-container {build_attrs(attrs)}>'
 
@@ -578,7 +657,7 @@ def apply_card_rules(text):
 
 ---
 
-# Rule 08: Live Filter (`<wm-livefilter>`)
+# Rule 07: Live Filter (`<wm-livefilter>`)
 
 ## Overview
 
