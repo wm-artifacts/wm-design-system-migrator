@@ -1,0 +1,37 @@
+{
+  "container" : {
+    "appearances" : {
+      "custom-container" : {
+        "mapping" : {
+          "background" : {
+            "value" : "{color.transparent.value}"
+          },
+          "border" : {
+            "color" : {
+              "value" : "{color.border.@.value}"
+            },
+            "width" : {
+              "value" : "{space.0.value}"
+            },
+            "style" : {
+              "value" : "{border.style.none.value}"
+            },
+            "radius" : {
+              "value" : "{radius.none.value}"
+            }
+          },
+          "shadow" : {
+            "value" : "{elevation.shadow.none.value}"
+          }
+        }
+      }
+    },
+    "meta" : {
+      "appearances" : {
+        "custom-container" : {
+          "source" : "user"
+        }
+      }
+    }
+  }
+}

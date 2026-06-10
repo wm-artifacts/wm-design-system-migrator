@@ -1,0 +1,35 @@
+{
+  "icon" : {
+    "appearances" : {
+      "custom-icon" : {
+        "mapping" : {
+          "color" : {
+            "value" : "{color.on-background.@.value}"
+          },
+          "font-size" : {
+            "value" : "{icon.size.sm.value}"
+          },
+          "min-width" : {
+            "value" : "{icon.size.sm.value}"
+          },
+          "width" : {
+            "value" : "{icon.size.sm.value}"
+          },
+          "height" : {
+            "value" : "{icon.size.sm.value}"
+          },
+          "gap" : {
+            "value" : "{space.1.value}"
+          }
+        }
+      }
+    },
+    "meta" : {
+      "appearances" : {
+        "custom-icon" : {
+          "source" : "user"
+        }
+      }
+    }
+  }
+}

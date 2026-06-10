@@ -1,0 +1,32 @@
+{
+  "tile" : {
+    "appearances" : {
+      "custom-tile" : {
+        "mapping" : {
+          "padding" : {
+            "value" : "{space.4.value}"
+          },
+          "background" : {
+            "value" : "{color.surface.container.low.@.value}"
+          },
+          "color" : {
+            "value" : "{color.on-surface.variant.@.value}"
+          },
+          "radius" : {
+            "value" : "{radius.sm.value}"
+          },
+          "shadow" : {
+            "value" : "{elevation.shadow.1.value}"
+          }
+        }
+      }
+    },
+    "meta" : {
+      "appearances" : {
+        "custom-tile" : {
+          "source" : "user"
+        }
+      }
+    }
+  }
+}

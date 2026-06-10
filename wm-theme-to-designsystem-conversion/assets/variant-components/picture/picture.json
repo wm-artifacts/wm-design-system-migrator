@@ -1,0 +1,43 @@
+{
+  "picture" : {
+    "appearances" : {
+      "custom-picture" : {
+        "mapping" : {
+          "width" : {
+            "value" : "auto"
+          },
+          "height" : {
+            "value" : "auto"
+          },
+          "radius" : {
+            "value" : "{radius.xs.value}"
+          },
+          "padding" : {
+            "value" : "{space.1.value}"
+          },
+          "border" : {
+            "color" : {
+              "value" : "{color.border.@.value}"
+            },
+            "style" : {
+              "value" : "{border.style.base.value}"
+            },
+            "width" : {
+              "value" : "{border.width.base.value}"
+            }
+          },
+          "background" : {
+            "value" : "{color.surface.container.low.@.value}"
+          }
+        }
+      }
+    },
+    "meta" : {
+      "appearances" : {
+        "custom-picture" : {
+          "source" : "user"
+        }
+      }
+    }
+  }
+}
