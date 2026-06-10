@@ -728,14 +728,63 @@ Signature contract: `apply_livefilter_rules(text) -> (text, counts_dict)`.
 def apply_livefilter_rules(text):
     counts = {'wm_livefilter_itemsperrow': 0}
 
-    def patch_livefilter(m):
-        attrs = parse_attrs(m.group(1))
-        cols = attrs.get('columns', '')
-        if cols and 'itemsperrow' not in attrs:
-            attrs['itemsperrow'] = f'xs-1 sm-{cols} md-{cols} lg-{cols}'
-            counts['wm_livefilter_itemsperrow'] += 1
-        return f'<wm-livefilter {build_attrs(attrs)}>'
+    def matching_close_span(s, name, body_start):
+        """(start, end) of the </name> that matches the open whose body starts at body_start.
+        Depth-aware (skips self-closing opens)."""
+        open_pat = re.compile(r'<' + re.escape(name) +
+                              r'\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*?)(/?)>', re.DOTALL)
+        close_pat = re.compile(r'</' + re.escape(name) + r'\s*>')
+        depth, pos = 1, body_start
+        while pos < len(s):
+            o = open_pat.search(s, pos)
+            c = close_pat.search(s, pos)
+            if not c:
+                return -1, -1
+            if o and o.start() < c.start():
+                if o.group(2) != '/':          # not self-closing -> deeper nesting
+                    depth += 1
+                pos = o.end()
+            else:
+                depth -= 1
+                if depth == 0:
+                    return c.start(), c.end()
+                pos = c.end()
+        return -1, -1
 
-    text = re.sub(r'<wm-livefilter\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', patch_livefilter, text)
-    return text, counts
+    lg_open_re = re.compile(r'<wm-layoutgrid\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*?)(/?)>', re.DOTALL)
+    lf_open_re = re.compile(r'<wm-livefilter\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>', re.DOTALL)
+
+    out, cursor = [], 0
+    for fm in lf_open_re.finditer(text):
+        if fm.start() < cursor:
+            continue
+        out.append(text[cursor:fm.start()])
+        lf_attrs = parse_attrs(fm.group(1))
+
+        lfc_start, lfc_end = matching_close_span(text, 'wm-livefilter', fm.end())
+        body_end = lfc_start if lfc_start != -1 else len(text)
+        body = text[fm.end():body_end]
+
+        # Column count comes from the immediate-child <wm-layoutgrid>, not the <wm-livefilter> tag.
+        cols = ''
+        lg = lg_open_re.search(body)
+        if lg and lg.group(2) != '/':
+            lg_attrs = parse_attrs(lg.group(1))
+            cols = lg_attrs.get('columns', '')
+
+        if 'itemsperrow' not in lf_attrs:
+            lf_attrs['itemsperrow'] = (f'xs-1 sm-{cols} md-{cols} lg-{cols}'
+                                       if cols else 'xs-1 sm-1 md-1 lg-1')
+            counts['wm_livefilter_itemsperrow'] += 1
+
+        out.append(f'<wm-livefilter {build_attrs(lf_attrs)}>')
+        out.append(body)
+        if lfc_start != -1:
+            out.append(text[lfc_start:lfc_end])
+            cursor = lfc_end
+        else:
+            cursor = body_end
+
+    out.append(text[cursor:])
+    return ''.join(out), counts
 ```
