@@ -270,16 +270,18 @@ def apply_basic_rules(text):
     def patch_progress_bar(m):
         attrs = parse_attrs(m.group(1))
         if 'variant' not in attrs:
-            attrs['class'] = merge_class(attrs.get('class', ''), 'app-progress progress-bar-default')
-            attrs['variant'] = 'filled:default'
+            type = attrs.get('type', 'default')
+            attrs['class'] = merge_class(attrs.get('class', ''), f'app-progress progress-bar-{type}')
+            attrs['variant'] = f'filled:{type}'
             counts['wm_progress_bar'] += 1
         return f'<wm-progress-bar {build_attrs(attrs)}>'
 
     def patch_progress_circle(m):
         attrs = parse_attrs(m.group(1))
         if 'variant' not in attrs:
-            attrs['class'] = merge_class(attrs.get('class', ''), 'app-progress circle progress-circle-default')
-            attrs['variant'] = 'filled:default'
+            type = attrs.get('type', 'default')
+            attrs['class'] = merge_class(attrs.get('class', ''), f'app-progress circle progress-circle-{type}')
+            attrs['variant'] = f'filled:{type}'
             counts['wm_progress_circle'] += 1
         return f'<wm-progress-circle {build_attrs(attrs)}>'
 
