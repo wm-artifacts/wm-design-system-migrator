@@ -14,10 +14,10 @@ Several container-type components require class additions and variant assignment
 ### Action
 
 1. Add flex attributes (if not already present):
-   - `direction="row"`
-   - `alignment="top-left"`
-   - `gap="4"`
-   - `width="fill"`
+   <!-- - `direction="row"` -->
+   <!-- - `alignment="top-left"` -->
+   <!-- - `gap="4"` -->
+   <!-- - `width="fill"` -->
 2. Add `class="app-container-default"` (append to any existing classes).
 3. Add `variant="default"`.
 
@@ -116,10 +116,10 @@ def apply_containers_rules(text):
     def patch_container(m):
         attrs = parse_attrs(m.group(1))
         if 'variant' not in attrs:
-            attrs.setdefault('direction', 'row')
-            attrs.setdefault('alignment', 'top-left')
-            attrs.setdefault('gap', '4')
-            attrs.setdefault('width', 'fill')
+            # attrs.setdefault('direction', 'row')
+            # attrs.setdefault('alignment', 'top-left')
+            # attrs.setdefault('gap', '4')
+            # attrs.setdefault('width', 'fill')
             existing_classes = set(attrs.get('class', '').split())
             if not existing_classes & _CARD_CLASS_SET:
                 attrs['class'] = merge_class(attrs.get('class', ''), 'app-container-default')
