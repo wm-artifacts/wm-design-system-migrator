@@ -92,9 +92,187 @@ Proceed with conversion? [Y/n]
 If `--dry-run` is active, note that no files will be written.
 Wait for user confirmation before continuing.
 
+### STEP 3 · Component Attribute & Variant Conversion
+
+> **This step is opt-in — always prompt the user before executing any part of it.**
+
+Ask the user:
+
+*"Would you also like to apply component attribute and variant enhancements (forms, lists, buttons, labels, icons, tables)? [Y/n]"*
+
+If the user declines, skip to STEP 4.
+
 ---
 
-### STEP 3 · Write the conversion script and run it
+#### Determine project type
+
+1. If `PROJECT_TYPE` was already resolved during this execution (e.g. read from `.wmproject.properties` in a prior step), reuse that value.
+2. Otherwise read `<PROJECT_DIR>/.wmproject.properties` and extract the `type` line:
+   - `type=WEB` → `PROJECT_TYPE=web`
+   - `type=NATIVE_MOBILE` → `PROJECT_TYPE=mobile`
+   - If absent or unrecognised → default to `web` and warn the user: *"Could not detect project type — defaulting to web rules."*
+
+---
+
+#### Load conversion rules
+
+Resolve the rules directory based on `PROJECT_TYPE`:
+
+- `PROJECT_TYPE=web`    → `wm-component-conversion/assets/rules/web/`
+- `PROJECT_TYPE=mobile` → `wm-component-conversion/assets/rules/mobile/`
+
+Rules are organised into category subdirectories. Each subdirectory contains exactly one `Rule.md`:
+
+```
+<RULES_DIR>/
+  basic/Rule.md
+  advanced/Rule.md
+  charts/Rule.md
+  containers/Rule.md
+  data/Rule.md
+  dialogs/Rule.md
+  input/Rule.md
+  layout/Rule.md
+  navigation/Rule.md
+```
+
+**Scan every immediate subdirectory of `RULES_DIR` for a `Rule.md` and read each one in full.** Do not hardcode category names — discover them dynamically so any new category is picked up automatically.
+
+The union of all loaded `Rule.md` files defines the complete set of transformations to apply.
+
+If `RULES_DIR` does not exist or no `Rule.md` files are found, skip this step and warn: *"No component rules found for project type '`<PROJECT_TYPE>`'. Skipping component conversion."*
+
+---
+
+#### Execution
+
+Each `Rule.md` file carries its Python implementation in a `## Script` section. The temp script that
+runs the conversion is **assembled programmatically from the raw `Rule.md` files** — never by hand.
+
+> ⚠️ **Do not hand-transcribe the rule code blocks.** Several rule regexes contain the attribute
+> pattern `"[^"]*"|'[^']*'`. When that is re-typed by hand, the two `*` quantifiers can be read as a
+> Markdown `*…*` emphasis span and silently dropped, turning it into the invalid `"[^"]"|'[^']'`. That
+> produces `re.PatternError: missing ), unterminated subpattern` at runtime. The builder below sidesteps
+> this entirely by reading each `Rule.md` verbatim from disk and slicing out the fenced blocks — the
+> regexes are never re-typed.
+
+**1 · Write the builder `<PROJECT_DIR>/wm_comp_conv_build.py`**
+
+This is the *only* Python you author directly. It reads every `<category>/Rule.md` under `RULES_DIR`,
+extracts each ```` ```python ```` block (with its `# Execution order: N`, default `99`), sorts by order,
+discovers the `apply_*_rules` function names, and writes the runnable `wm_comp_conv_tmp.py`:
+
+```python
+#!/usr/bin/env python3
+import re, sys
+from pathlib import Path
+
+RULES_DIR = Path(sys.argv[1])      # e.g. wm-component-conversion/assets/rules/web
+OUT       = Path(sys.argv[2])      # <PROJECT_DIR>/wm_comp_conv_tmp.py
+
+HEADER = r'''#!/usr/bin/env python3
+import re, sys, json
+from pathlib import Path
+
+PROJECT_DIR = sys.argv[1]
+DRY_RUN     = '--dry-run' in sys.argv
+PAGE_FILTER = []
+if '--pages' in sys.argv:
+    idx = sys.argv.index('--pages')
+    if idx + 1 < len(sys.argv):
+        PAGE_FILTER = [p.strip() for p in sys.argv[idx + 1].split(',')]
+
+def parse_attrs(s):
+    return dict(re.findall(r'([\w-]+)="([^"]{0,})"', s))
+
+def build_attrs(d):
+    return ' '.join(f'{k}="{v}"' for k, v in d.items())
+
+def merge_class(existing, *new_cls):
+    parts = existing.split() if existing else []
+    for c in new_cls:
+        if c and c not in parts:
+            parts.append(c)
+    return ' '.join(parts)
+'''
+
+MAIN = r'''
+RULE_FUNCS = [__RULE_FUNCS_LIST__]
+
+pages_dir  = Path(PROJECT_DIR) / 'src/main/webapp/pages'
+html_files = sorted(pages_dir.rglob('*.html'))
+if PAGE_FILTER:
+    html_files = [f for f in html_files if f.parent.name in PAGE_FILTER]
+
+summary, all_counts = [], {}
+for html_path in html_files:
+    original = html_path.read_text(encoding='utf-8')
+    text, counts = original, {}
+    for rule_fn in RULE_FUNCS:
+        text, c = rule_fn(text)
+        for k, v in c.items():
+            counts[k] = counts.get(k, 0) + v
+    if sum(counts.values()) == 0:
+        continue
+    for k, v in counts.items():
+        all_counts[k] = all_counts.get(k, 0) + v
+    summary.append({'page': html_path.parent.name, 'file': str(html_path), 'changes': counts})
+    if not DRY_RUN:
+        html_path.write_text(text, encoding='utf-8')
+
+print(json.dumps({'summary': summary, 'totals': all_counts, 'dry_run': DRY_RUN}))
+'''
+
+# Slice every ```python block out of each <category>/Rule.md (raw read — no re-typing).
+fence = chr(96) * 3                                  # ``` without writing it literally
+blocks = []                                          # (order, code)
+for rule_md in sorted(RULES_DIR.glob('*/Rule.md')):
+    raw = rule_md.read_text(encoding='utf-8')
+    for seg in raw.split(fence + 'python')[1:]:
+        code = seg.split(fence, 1)[0]
+        if code.startswith('\n'):
+            code = code[1:]
+        m = re.search(r'# Execution order:\s*([0-9]+)', code)
+        order = int(m.group(1)) if m else 99
+        blocks.append((order, code))
+
+blocks.sort(key=lambda b: b[0])
+body = '\n\n'.join(code for _, code in blocks)
+
+# apply_*_rules names in execution order, de-duplicated.
+seen, funcs = set(), []
+for name in re.findall(r'def (apply_\w+_rules)\(text\)', body):
+    if name not in seen:
+        seen.add(name)
+        funcs.append(name)
+
+script = HEADER + '\n' + body + '\n' + MAIN.replace('__RULE_FUNCS_LIST__', ', '.join(funcs))
+OUT.write_text(script, encoding='utf-8')
+print(f'Wrote {OUT} ({len(blocks)} blocks): {", ".join(funcs)}')
+```
+
+Notes:
+- `RULES_DIR.glob('*/Rule.md')` matches exactly one `Rule.md` per immediate category subdirectory — new categories are picked up automatically.
+- A single `Rule.md` with multiple `## Script` blocks contributes all of them; ordering is driven solely by `# Execution order: N`.
+
+**2 · Build, run, and clean up**
+
+```bash
+python3 "<PROJECT_DIR>/wm_comp_conv_build.py" "<RULES_DIR>" "<PROJECT_DIR>/wm_comp_conv_tmp.py"
+python3 "<PROJECT_DIR>/wm_comp_conv_tmp.py" "<PROJECT_DIR>" [--dry-run] [--pages "Page1,Page2"]
+```
+
+`<RULES_DIR>` is the project-type rules root resolved in **Load conversion rules** (`.../assets/rules/web` or `.../assets/rules/mobile`).
+
+Parse the JSON output and store results in `COMP_COUNTS` for STEP 4.
+
+```bash
+rm -f "<PROJECT_DIR>/wm_comp_conv_tmp.py" "<PROJECT_DIR>/wm_comp_conv_build.py"
+```
+
+---
+
+### STEP 4 · Write the conversion script and run it
 
 Write the Python 3 script below to `<PROJECT_DIR>/wm_grid_conv_tmp.py`, run it
 with `python3`, then delete it (`rm -f`). Parse its JSON output to build the summary.
@@ -163,14 +341,44 @@ def get_alignment(attrs):
     h = h_map.get(attrs.get('horizontalalign', 'left'), 'left')
     return f'middle-{h}'
 
+# ── grid pre-scan: count direct-child gridrows per layoutgrid ────────────────
+
+_LG_SCAN = re.compile(
+    r'(<wm-layoutgrid\b[^>]*?>|</wm-layoutgrid>'
+    r'|<wm-gridrow\b[^>]*?>)',
+    re.DOTALL
+)
+
+def _count_gridrows_per_layoutgrid(text):
+    """Return list of direct-child wm-gridrow counts, indexed by layoutgrid opening-tag order."""
+    stack   = []   # each entry: {'idx': int, 'count': int}
+    results = {}   # opening-tag index → gridrow count
+    lg_idx  = 0
+
+    for m in _LG_SCAN.finditer(text):
+        tag = m.group(0)
+        if tag.startswith('<wm-layoutgrid') and not tag.startswith('</'):
+            stack.append({'idx': lg_idx, 'count': 0})
+            lg_idx += 1
+        elif tag == '</wm-layoutgrid>':
+            if stack:
+                entry = stack.pop()
+                results[entry['idx']] = entry['count']
+        elif tag.startswith('<wm-gridrow'):
+            if stack:
+                stack[-1]['count'] += 1   # only the innermost layoutgrid gets the credit
+
+    return [results.get(i, 1) for i in range(lg_idx)]
+
 # ── per-element converters ───────────────────────────────────────────────────
 
-def conv_layoutgrid(attr_str):
+def conv_layoutgrid(attr_str, direction='row'):
+    """direction is computed by the caller from the gridrow pre-scan."""
     s = parse_attrs(attr_str)
     d = {}
     if s.get('name'):
         d['name'] = s['name']
-    d['direction']  = 'row'
+    d['direction']  = direction
     d['wrap']       = 'true'
     d['width']      = 'fill'
     d['class']      = merge_class(s.get('class', ''), 'app-container-default')
@@ -309,9 +517,18 @@ def convert_linearlayout_html(text):
 def convert_grid_html(text):
     counts = {'layoutgrid': 0, 'gridrow': 0, 'gridcolumn': 0}
 
+    # Pre-scan: determine direction for each layoutgrid before replacing tags.
+    # direction = "column" when the layoutgrid has >1 direct-child gridrows
+    # (rows must stack vertically); "row" when there is only 1.
+    gridrow_counts = _count_gridrows_per_layoutgrid(text)
+    lg_idx = [0]
+
     def _sub_layoutgrid(m):
+        i = lg_idx[0]; lg_idx[0] += 1
         counts['layoutgrid'] += 1
-        return f'<wm-container {conv_layoutgrid(m.group(1))}>'
+        nr        = gridrow_counts[i] if i < len(gridrow_counts) else 1
+        direction = 'column' if nr > 1 else 'row'
+        return f'<wm-container {conv_layoutgrid(m.group(1), direction)}>'
 
     def _sub_gridrow(m):
         counts['gridrow'] += 1
@@ -467,10 +684,11 @@ After capturing the JSON output, delete the temp script:
 ```bash
 rm -f "<PROJECT_DIR>/wm_grid_conv_tmp.py"
 ```
-
 ---
 
-### STEP 3b · Generate the importable ZIP (standalone only)
+
+
+### STEP 5 · Generate the importable ZIP (standalone only)
 
 > **Skip this step when invoked from `wm-design-system-migrator`** — the parent orchestrator
 > handles Packaging in its own PHASE 4. Only execute when running `wm-component-conversion`
@@ -510,7 +728,9 @@ Pass `ZIP_PATH` and `ZIP_SIZE` into the STEP 4 summary.
 
 ---
 
-### STEP 4 · Print conversion summary
+
+
+### STEP 6 · Print conversion summary
 
 ```
 Grid & LinearLayout → Container Conversion — [DRY RUN: no files written | COMPLETE]
@@ -518,13 +738,25 @@ Grid & LinearLayout → Container Conversion — [DRY RUN: no files written | CO
 Project: <PROJECT_DIR>
 ZIP:     <ZIP_PATH>  (<ZIP_SIZE>)    ← omit this line when run from wm-design-system-migrator or when DRY_RUN
 
-Pages converted:
+Pages converted (layout):
   ✓ Main          — 1 layoutgrid, 2 gridrow, 4 gridcolumn, 0 linearlayout, 0 linearlayoutitem, 3 collapsed
   ✓ Landing       — 0 layoutgrid, 0 gridrow, 0 gridcolumn, 2 linearlayout, 5 linearlayoutitem, 2 collapsed
   ...
 
-Totals: N layoutgrid(s), N gridrow(s), N gridcolumn(s),
-        N linearlayout(s), N linearlayoutitem(s), N collapsed across N page(s)
+Totals (layout): N layoutgrid(s), N gridrow(s), N gridcolumn(s),
+                 N linearlayout(s), N linearlayoutitem(s), N collapsed across N page(s)
+
+[Include the following block only if STEP 3c ran:]
+
+Component Attribute & Variant Conversion — [DRY RUN: no files written | COMPLETE]
+Rules applied: wm-component-conversion/assets/rules/<PROJECT_TYPE>/
+
+Pages converted (components):
+  ✓ Main    — N form_itemsperrow, N wm_list, N wm_listtemplate, N wm_table, N wm_container, N button, N label, N icon, N picture
+  ...
+
+Totals (components): [data rules] N form_itemsperrow, N wm_list, N wm_listtemplate, N wm_table, N wm_container
+                     [basic rules] N button, N label, N icon, N picture  — across N page(s)
 
 Collapse rule: only containers produced by this conversion are eligible (pre-existing wm-container
 elements are never collapsed). A converted wm-container wrapping exactly ONE converted child is
@@ -556,17 +788,38 @@ If any page had zero changes after filtering, list it under *"Pages skipped (no 
 
 ## Conversion rules reference
 
-### `wm-layoutgrid` → outer flex row container
+### `wm-layoutgrid` → flex container (direction determined by gridrow count)
+
+**Direction rule (pre-scanned before any tag is replaced):**
+
+| Direct-child `wm-gridrow` count | `direction` |
+|---|---|
+| 1 | `"row"` — single row, columns sit side by side |
+| > 1 | `"column"` — multiple rows must stack vertically |
 
 ```html
-<!-- BEFORE -->
+<!-- BEFORE: single gridrow -->
 <wm-layoutgrid name="layoutgrid1" class="custom">
-  ...
+  <wm-gridrow>...</wm-gridrow>
 </wm-layoutgrid>
 
-<!-- AFTER -->
+<!-- AFTER: direction="row" (1 gridrow) -->
 <wm-container name="layoutgrid1" direction="row" wrap="true" width="fill"
     class="app-container-default custom" variant="default" gap="0" columngap="0">
+  ...
+</wm-container>
+```
+
+```html
+<!-- BEFORE: multiple gridrows -->
+<wm-layoutgrid name="layoutgrid1">
+  <wm-gridrow>...</wm-gridrow>
+  <wm-gridrow>...</wm-gridrow>
+</wm-layoutgrid>
+
+<!-- AFTER: direction="column" (> 1 gridrow) -->
+<wm-container name="layoutgrid1" direction="column" wrap="true" width="fill"
+    class="app-container-default" variant="default" gap="0" columngap="0">
   ...
 </wm-container>
 ```
@@ -575,13 +828,14 @@ Attribute rules:
 - `name` → kept as-is (preserves JS/CSS references)
 - `class` → merged; `app-container-default` appended if not already present
 - All layoutgrid-specific attributes → discarded
-- Fixed additions: `direction="row"` `wrap="true"` `width="fill"` `variant="default"` `gap="0"` `columngap="0"`
+- `direction` → `"column"` if direct-child gridrow count > 1, else `"row"` (pre-scanned)
+- Fixed additions: `wrap="true"` `width="fill"` `variant="default"` `gap="0"` `columngap="0"`
 
 ---
 
 ### `wm-gridrow` → flex row container
 
-Same rules as `wm-layoutgrid` above.
+Always `direction="row"` `wrap="true"` regardless of contents.
 
 ---
 
@@ -755,7 +1009,7 @@ converted columns to full width on screens ≤ 767 px (mobile portrait):
 }
 ```
 
-**Example walkthrough:**
+**Example walkthrough — single gridrow (direction="row"):**
 
 Input:
 ```html
@@ -769,21 +1023,57 @@ Input:
 </wm-layoutgrid>
 ```
 
-Output:
+Output (1 gridrow → `direction="row"` on outer; collapse removes the redundant row wrapper):
 ```html
-<wm-container name="layoutgrid1" direction="row" wrap="true" width="fill"
+<wm-container name="gridrow1" direction="row" wrap="true" width="fill"
+    class="app-container-default" variant="default" gap="0" columngap="0">
+    <wm-container name="gridcolumn1" direction="row" wrap="true" width="50%"
+        class="app-container-default" variant="default">
+        <wm-button caption="Button" name="button1"></wm-button>
+    </wm-container>
+    <wm-container name="gridcolumn2" direction="row" wrap="true" width="50%"
+        class="app-container-default" variant="default"></wm-container>
+</wm-container>
+```
+
+> The outer layoutgrid and the single gridrow both had `direction="row"` and `width="fill"`, so the collapse pass merged them into one container (gridrow1 name is preserved).
+
+---
+
+**Example walkthrough — multiple gridrows (direction="column"):**
+
+Input:
+```html
+<wm-layoutgrid name="layoutgrid1">
+    <wm-gridrow name="gridrow1">
+        <wm-gridcolumn columnwidth="6" name="gridcolumn1"></wm-gridcolumn>
+        <wm-gridcolumn columnwidth="6" name="gridcolumn2"></wm-gridcolumn>
+    </wm-gridrow>
+    <wm-gridrow name="gridrow2">
+        <wm-gridcolumn columnwidth="12" name="gridcolumn3"></wm-gridcolumn>
+    </wm-gridrow>
+</wm-layoutgrid>
+```
+
+Output (2 gridrows → `direction="column"` on outer; rows stack vertically):
+```html
+<wm-container name="layoutgrid1" direction="column" wrap="true" width="fill"
     class="app-container-default" variant="default" gap="0" columngap="0">
     <wm-container name="gridrow1" direction="row" wrap="true" width="fill"
         class="app-container-default" variant="default" gap="0" columngap="0">
         <wm-container name="gridcolumn1" direction="row" wrap="true" width="50%"
-            class="app-container-default" variant="default">
-            <wm-button caption="Button" name="button1"></wm-button>
-        </wm-container>
+            class="app-container-default" variant="default"></wm-container>
         <wm-container name="gridcolumn2" direction="row" wrap="true" width="50%"
+            class="app-container-default" variant="default"></wm-container>
+    </wm-container>
+    <wm-container name="gridrow2" direction="row" wrap="true" width="fill"
+        class="app-container-default" variant="default" gap="0" columngap="0">
+        <wm-container name="gridcolumn3" direction="row" wrap="true" width="fill"
             class="app-container-default" variant="default"></wm-container>
     </wm-container>
 </wm-container>
 ```
 
-On desktop: two equal-width flex columns (with row layout inside) side by side.
-On mobile (with `--responsive`): each column stacks to 100% width vertically.
+> The outer container uses `direction="column"` so the two rows stack. Each gridrow uses `direction="row"` so its columns sit side by side.
+
+On mobile (with `--responsive`): each gridcolumn stacks to 100% width vertically.

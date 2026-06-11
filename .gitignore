@@ -1,0 +1,22 @@
+# Dependencies — foundation-css npm package installed in skill assets
+node_modules/
+package-lock.json
+
+# macOS metadata
+.DS_Store
+**/.DS_Store
+
+# Claude session data
+.claude/
+
+# Temp scripts written and deleted by the conversion skills during execution
+wm_grid_conv_tmp.py
+wm_comp_conv_tmp.py
+wm_ref_conv_tmp.py
+
+# Extracted project folders created during migration (zip extraction targets)
+*_extracted/
+
+# Output ZIPs produced by the migrator
+*_conv_ds.zip
+*_conv_al.zip
